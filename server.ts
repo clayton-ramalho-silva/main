@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import dotenv from "dotenv";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -34,6 +35,15 @@ db.exec(`
     tls_version TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(integration_id) REFERENCES integrations(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key_value TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    integration_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(integration_id) REFERENCES integrations(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS alerts (
@@ -218,6 +228,115 @@ async function startServer() {
     }
 
     res.json({ success: true, count });
+  });
+
+  // --- API Key Management ---
+  app.get("/api/api-keys", (req, res) => {
+    try {
+      const keys = db.prepare(`
+        SELECT k.*, i.name as integration_name 
+        FROM api_keys k
+        LEFT JOIN integrations i ON k.integration_id = i.id
+        ORDER BY k.created_at DESC
+      `).all();
+      res.json(keys);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/api-keys", (req, res) => {
+    const { name, integration_id } = req.body;
+    if (!name || !integration_id) {
+      return res.status(400).json({ error: "Nome e integração ID são obrigatórios." });
+    }
+    try {
+      const keyValue = "nexus_key_" + crypto.randomBytes(16).toString("hex");
+      const info = db.prepare(`
+        INSERT INTO api_keys (key_value, name, integration_id)
+        VALUES (?, ?, ?)
+      `).run(keyValue, name, integration_id);
+      res.json({ id: info.lastInsertRowid, key_value: keyValue, name, integration_id });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/api-keys/:id", (req, res) => {
+    try {
+      db.prepare("DELETE FROM api_keys WHERE id = ?").run(req.params.id);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // --- Public Webhook/API Log Registration ---
+  app.get("/api/logs/register", (req, res) => {
+    res.status(405).json({ 
+      error: "Método Não Permitido. Use o método POST para registrar logs.",
+      instructions: "Envie uma requisição POST contendo a sua API Key no cabeçalho X-API-Key, Authorization Bearer ou no corpo da requisição."
+    });
+  });
+
+  app.post("/api/logs/register", (req, res) => {
+    let apiKey = req.headers["x-api-key"] || req.body.api_key || req.query.api_key;
+    
+    const authHeader = req.headers["authorization"];
+    if (!apiKey && authHeader && typeof authHeader === "string") {
+      if (authHeader.startsWith("Bearer ")) {
+        apiKey = authHeader.split(" ")[1];
+      } else {
+        apiKey = authHeader;
+      }
+    }
+
+    if (!apiKey) {
+      return res.status(401).json({ 
+        error: "Não autorizado: Chave de API (API Key) ausente. Envie no header X-API-Key, Authorization Bearer ou no corpo/query como 'api_key'." 
+      });
+    }
+
+    try {
+      const keyRecord = db.prepare("SELECT * FROM api_keys WHERE key_value = ?").get(apiKey) as any;
+      if (!keyRecord) {
+        return res.status(401).json({ error: "Não autorizado: API Key inválida ou inexistente." });
+      }
+
+      const { ip, geo, method, status, auth_status, tls_version } = req.body;
+
+      // Sensible defaults if not specified
+      const finalIp = ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
+      const finalGeo = geo || "Desconhecido";
+      const finalMethod = (method || "POST").toUpperCase();
+      const finalStatus = status !== undefined ? parseInt(status) : 200;
+      const finalAuthStatus = auth_status || "success";
+      const finalTlsVersion = tls_version || "TLS 1.3";
+
+      const info = db.prepare(`
+        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).run(
+        keyRecord.integration_id,
+        finalIp,
+        finalGeo,
+        finalMethod,
+        finalStatus,
+        finalAuthStatus,
+        finalTlsVersion
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Log registrado com sucesso!",
+        log_id: info.lastInsertRowid,
+        integration_id: keyRecord.integration_id,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error("Erro ao registrar log externo:", err);
+      res.status(500).json({ error: "Erro interno do servidor ao processar o log." });
+    }
   });
 
   // --- Vite / Frontend Setup ---

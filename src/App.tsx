@@ -22,7 +22,10 @@ import {
   Pencil,
   Users,
   LogOut,
-  UserPlus
+  UserPlus,
+  Key,
+  Copy,
+  Check
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -95,73 +98,101 @@ interface User {
 
 // --- Components ---
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }: any) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, isDark }: any) => (
   <button
     onClick={onClick}
     className={cn(
       "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group text-sm font-medium",
       active 
-        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
-        : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+        ? (isDark 
+            ? "bg-zinc-100 text-zinc-950 font-semibold" 
+            : "bg-zinc-900 text-white font-semibold") 
+        : (isDark 
+            ? "text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200" 
+            : "text-zinc-600 hover:bg-zinc-200/50 hover:text-zinc-900")
     )}
   >
-    <Icon className={cn("w-5 h-5", active ? "text-white" : "text-zinc-500 group-hover:text-zinc-300")} />
+    <Icon className={cn("w-5 h-5 transition-colors", 
+      active 
+        ? (isDark ? "text-zinc-950" : "text-white") 
+        : (isDark ? "text-zinc-500 group-hover:text-zinc-300" : "text-zinc-400 group-hover:text-zinc-700")
+    )} />
     <span>{label}</span>
   </button>
 );
 
 const Navbar = ({ toggleDarkMode, isDark, toggleSidebar, user, onLogout }: any) => (
-  <nav className="h-16 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-6">
+  <nav className={cn(
+    "h-16 border-b sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-md transition-colors duration-200",
+    isDark ? "border-zinc-950 bg-zinc-950/80 text-white" : "border-zinc-300 bg-white/80 text-zinc-900"
+  )}>
     <div className="flex items-center gap-4">
-      <button onClick={toggleSidebar} className="lg:hidden text-zinc-400 p-2 hover:bg-zinc-800 rounded-lg">
+      <button onClick={toggleSidebar} className={cn("lg:hidden p-2 rounded-lg", isDark ? "text-zinc-400 hover:bg-zinc-900" : "text-zinc-600 hover:bg-zinc-150")}>
         <Menu className="w-6 h-6" />
       </button>
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-          <Zap className="w-5 h-5 text-white" />
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm", isDark ? "bg-zinc-100 text-zinc-950" : "bg-zinc-900 text-white")}>
+          <Zap className="w-4 h-4" />
         </div>
-        <h1 className="text-xl font-bold tracking-tight text-white">Nexus <span className="text-blue-500">API</span></h1>
+        <h1 className="text-lg font-semibold tracking-tight">
+          Nexus <span className={isDark ? "text-zinc-400 font-normal" : "text-zinc-500 font-normal"}>API</span>
+        </h1>
       </div>
     </div>
     <div className="flex items-center gap-3">
       <button 
         onClick={toggleDarkMode}
-        className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-white transition-colors"
+        className={cn(
+          "p-2 rounded-xl border transition-colors",
+          isDark 
+            ? "border-zinc-900 bg-zinc-900/50 text-zinc-400 hover:text-white" 
+            : "border-zinc-300 bg-zinc-50 text-zinc-600 hover:text-black hover:bg-zinc-100"
+        )}
       >
-        {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
       </button>
-      <div className="h-8 w-px bg-zinc-800 mx-2" />
+      <div className={cn("h-6 w-px mx-1", isDark ? "bg-zinc-900" : "bg-zinc-300")} />
       <div className="flex items-center gap-3">
         <div className="text-right hidden sm:block">
-          <p className="text-xs font-semibold text-zinc-200">{user?.name}</p>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{user?.role}</p>
+          <p className="text-xs font-medium">{user?.name}</p>
+          <p className={cn("text-[9px] uppercase tracking-wider", isDark ? "text-zinc-500" : "text-zinc-400")}>{user?.role}</p>
         </div>
         <button 
           onClick={onLogout}
-          className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-red-500 transition-colors group"
+          className={cn(
+            "w-9 h-9 rounded-xl border flex items-center justify-center transition-all group",
+            isDark 
+              ? "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-zinc-700" 
+              : "bg-zinc-50 border-zinc-300 text-zinc-500 hover:text-rose-600 hover:border-zinc-400"
+          )}
           title="Sair"
         >
-           <LogOut className="w-5 h-5 transition-transform group-hover:scale-110" />
+           <LogOut className="w-4 h-4 transition-transform group-hover:scale-105" />
         </button>
       </div>
     </div>
   </nav>
 );
 
-const Dashboard = ({ stats, integrations, onFilterChange }: { stats: Stats | null, integrations: Integration[], onFilterChange: (id: number | 'all') => void }) => {
+const Dashboard = ({ stats, integrations, onFilterChange, isDark }: { stats: Stats | null, integrations: Integration[], onFilterChange: (id: number | 'all') => void, isDark: boolean }) => {
   if (!stats) return null;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Dashboard Executivo</h2>
-          <p className="text-zinc-500 text-sm">Resumo operacional e métricas de desempenho.</p>
+          <h2 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Dashboard Executivo</h2>
+          <p className={cn("text-sm", isDark ? "text-zinc-500" : "text-zinc-600")}>Resumo operacional e métricas de desempenho.</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Filtrar por</label>
+          <label className={cn("text-[10px] font-bold uppercase tracking-widest", isDark ? "text-zinc-500" : "text-zinc-400")}>Filtrar por</label>
           <select 
-            className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500/50 transition-colors min-w-[200px]"
+            className={cn(
+              "text-sm rounded-xl px-4 py-2 focus:outline-none transition-colors min-w-[200px] border",
+              isDark 
+                ? "bg-zinc-900 border-zinc-805 text-zinc-300 focus:border-zinc-700" 
+                : "bg-white border-zinc-300 text-zinc-800 focus:border-zinc-400"
+            )}
             onChange={(e) => onFilterChange(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
           >
             <option value="all">Todas as Integrações</option>
@@ -173,69 +204,82 @@ const Dashboard = ({ stats, integrations, onFilterChange }: { stats: Stats | nul
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-sm overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Activity className="w-16 h-16 text-blue-500" />
+        <div className={cn("p-6 rounded-2xl border transition-colors overflow-hidden relative group", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+          <div className="absolute top-0 right-0 p-4 opacity-5">
+            <Activity className={cn("w-16 h-16", isDark ? "text-white" : "text-zinc-900")} />
           </div>
-          <p className="text-zinc-500 text-sm font-medium mb-1">Volume Total</p>
-          <h3 className="text-3xl font-bold tracking-tight text-white">{stats.summary.totalVolume}</h3>
-          <p className="text-xs text-blue-400 mt-2 flex items-center gap-1">
-             <ChevronRight className="w-3 h-3" /> Logs processados
+          <p className={cn("text-sm font-medium mb-1", isDark ? "text-zinc-500" : "text-zinc-500")}>Volume Total</p>
+          <h3 className={cn("text-3xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>{stats.summary.totalVolume}</h3>
+          <p className={cn("text-xs mt-2 flex items-center gap-1", isDark ? "text-zinc-400" : "text-zinc-650")}>
+              <ChevronRight className="w-3 h-3" /> Logs processados
           </p>
         </div>
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-sm overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <AlertTriangle className="w-16 h-16 text-red-500" />
+        <div className={cn("p-6 rounded-2xl border transition-colors overflow-hidden relative group", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+          <div className="absolute top-0 right-0 p-4 opacity-5">
+            <AlertTriangle className={cn("w-16 h-16", isDark ? "text-white" : "text-zinc-900")} />
           </div>
-          <p className="text-zinc-500 text-sm font-medium mb-1">Taxa de Erro</p>
-          <h3 className="text-3xl font-bold tracking-tight text-white">{stats.summary.errorRate}%</h3>
-          <div className={cn("h-1 w-full bg-zinc-800 mt-3 rounded-full overflow-hidden")}>
-             <div className="h-full bg-red-500" style={{ width: `${stats.summary.errorRate}%` }} />
+          <p className={cn("text-sm font-medium mb-1", isDark ? "text-zinc-500" : "text-zinc-500")}>Taxa de Erro</p>
+          <h3 className={cn("text-3xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>{stats.summary.errorRate}%</h3>
+          <div className={cn("h-1.5 w-full mt-3 rounded-full overflow-hidden", isDark ? "bg-zinc-800" : "bg-zinc-100")}>
+              <div className={cn("h-full rounded-full transition-all duration-300", isDark ? "bg-zinc-400" : "bg-zinc-800")} style={{ width: `${stats.summary.errorRate}%` }} />
           </div>
         </div>
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-sm overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <ShieldCheck className="w-16 h-16 text-orange-500" />
+        <div className={cn("p-6 rounded-2xl border transition-colors overflow-hidden relative group", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+          <div className="absolute top-0 right-0 p-4 opacity-5">
+            <ShieldCheck className={cn("w-16 h-16", isDark ? "text-white" : "text-zinc-900")} />
           </div>
-          <p className="text-zinc-500 text-sm font-medium mb-1">Falhas Auth</p>
-          <h3 className="text-3xl font-bold tracking-tight text-white">{stats.summary.authFailures}</h3>
-          <p className="text-xs text-zinc-500 mt-2 uppercase tracking-widest font-bold">Tentativas negadas</p>
+          <p className={cn("text-sm font-medium mb-1", isDark ? "text-zinc-500" : "text-zinc-500")}>Falhas Auth</p>
+          <h3 className={cn("text-3xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>{stats.summary.authFailures}</h3>
+          <p className={cn("text-xs mt-2 uppercase tracking-widest font-bold", isDark ? "text-zinc-500" : "text-zinc-450")}>Tentativas negadas</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 h-[400px]">
-          <h4 className="text-sm font-semibold text-zinc-100 mb-6 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-blue-500" /> Tráfego 24h
+        <div className={cn("p-6 rounded-2xl border transition-colors h-[400px]", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+          <h4 className={cn("text-sm font-semibold mb-6 flex items-center gap-2", isDark ? "text-zinc-100" : "text-zinc-800")}>
+            <Activity className="w-4 h-4 text-zinc-500" /> Tráfego 24h
           </h4>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats.timeline}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="hour" stroke="#71717a" fontSize={11} />
-                <YAxis stroke="#71717a" fontSize={11} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#27272a" : "#cbd5e1"} vertical={false} />
+                <XAxis dataKey="hour" stroke={isDark ? "#71717a" : "#52525b"} fontSize={11} />
+                <YAxis stroke={isDark ? "#71717a" : "#52525b"} fontSize={11} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px' }}
-                  itemStyle={{ color: '#3b82f6' }}
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    borderColor: isDark ? '#27272a' : '#cbd5e1', 
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+                  }}
+                  itemStyle={{ color: isDark ? '#ffffff' : '#000000' }}
                 />
-                <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="count" stroke={isDark ? "#d4d4d8" : "#18181b"} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 h-[400px]">
-          <h4 className="text-sm font-semibold text-zinc-100 mb-6 flex items-center gap-2">
-            <Database className="w-4 h-4 text-green-500" /> Métodos HTTP
+        <div className={cn("p-6 rounded-2xl border transition-colors h-[400px]", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+          <h4 className={cn("text-sm font-semibold mb-6 flex items-center gap-2", isDark ? "text-zinc-100" : "text-zinc-800")}>
+            <Database className="w-4 h-4 text-zinc-500" /> Métodos HTTP
           </h4>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.methods}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="method" stroke="#71717a" fontSize={11} />
-                <YAxis stroke="#71717a" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px' }} />
-                <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#27272a" : "#cbd5e1"} vertical={false} />
+                <XAxis dataKey="method" stroke={isDark ? "#71717a" : "#52525b"} fontSize={11} />
+                <YAxis stroke={isDark ? "#71717a" : "#52525b"} fontSize={11} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                    borderColor: isDark ? '#27272a' : '#cbd5e1', 
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+                  }}
+                  itemStyle={{ color: isDark ? '#ffffff' : '#000500' }}
+                />
+                <Bar dataKey="count" fill={isDark ? "#a1a1aa" : "#333333"} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -245,7 +289,7 @@ const Dashboard = ({ stats, integrations, onFilterChange }: { stats: Stats | nul
   );
 };
 
-const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrations: Integration[], fetchIntegrations: () => void, userRole: string }) => {
+const Integrations = ({ integrations, fetchIntegrations, userRole, isDark }: { integrations: Integration[], fetchIntegrations: () => void, userRole: string, isDark: boolean }) => {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
@@ -280,7 +324,7 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
     }
   }, [editingIntegration]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingIntegration) {
       await axios.put(`/api/integrations/${editingIntegration.id}`, formData);
@@ -311,8 +355,8 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Integrações API</h2>
-          <p className="text-zinc-500 text-sm">Gerencie múltiplos fluxos de dados e endpoints.</p>
+          <h2 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Integrações API</h2>
+          <p className={cn("text-sm", isDark ? "text-zinc-500" : "text-zinc-600")}>Gerencie múltiplos fluxos de dados e endpoints.</p>
         </div>
         {isAdmin && (
           <button 
@@ -320,7 +364,12 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
               setEditingIntegration(null);
               setShowModal(true);
             }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-blue-500/20"
+            className={cn(
+              "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm",
+              isDark 
+                ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200" 
+                : "bg-zinc-900 text-white hover:bg-zinc-800"
+            )}
           >
             <Plus className="w-5 h-5" /> Nova Integração
           </button>
@@ -329,30 +378,30 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {integrations.map((int) => (
-          <div key={int.id} className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 group hover:border-zinc-700 transition-colors">
+          <div key={int.id} className={cn("p-6 rounded-2xl border transition-colors group", isDark ? "bg-zinc-900 border-zinc-850 hover:border-zinc-700" : "bg-white border-zinc-300 hover:border-zinc-400 shadow-sm")}>
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center">
-                  <Database className="w-6 h-6 text-blue-500" />
+                <div className={cn("w-12 h-12 rounded-xl border flex items-center justify-center transition-colors", isDark ? "bg-zinc-800 border-zinc-700 text-zinc-400" : "bg-zinc-100 border-zinc-300 text-zinc-500")}>
+                  <Database className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{int.name}</h3>
+                  <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>{int.name}</h3>
                   <p className="text-xs text-zinc-500">Criado em {new Date(int.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
               {isAdmin && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button 
                     onClick={() => handleEdit(int)}
-                    className="p-2 text-zinc-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                    className={cn("p-2 rounded-lg transition-colors", isDark ? "text-zinc-500 hover:text-white hover:bg-zinc-800" : "text-zinc-500 hover:text-zinc-950 hover:bg-zinc-100")}
                   >
-                    <Pencil className="w-5 h-5" />
+                    <Pencil className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => setShowDeleteConfirm(int.id)}
-                    className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                    className={cn("p-2 rounded-lg transition-colors", isDark ? "text-zinc-500 hover:text-rose-450 hover:bg-rose-500/10" : "text-zinc-500 hover:text-rose-650 hover:bg-rose-50")}
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -360,66 +409,73 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
 
             <div className="grid grid-cols-2 gap-y-4 gap-x-6">
               <div>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Origem</p>
-                <p className="text-sm text-zinc-300 font-mono flex items-center gap-2">
-                  <Globe className="w-3 h-3 text-zinc-500" /> {int.origin}
+                <p className={cn("text-[10px] uppercase tracking-wider font-semibold mb-1", isDark ? "text-zinc-500" : "text-zinc-400")}>Origem</p>
+                <p className={cn("text-sm font-mono flex items-center gap-2", isDark ? "text-zinc-300" : "text-zinc-705")}>
+                  <Globe className={cn("w-3.5 h-3.5", isDark ? "text-zinc-650" : "text-zinc-400")} /> {int.origin}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Destino</p>
-                <p className="text-sm text-zinc-300 font-mono flex items-center gap-2">
-                  <ChevronRight className="w-3 h-3 text-zinc-500" /> {int.destination}
+                <p className={cn("text-[10px] uppercase tracking-wider font-semibold mb-1", isDark ? "text-zinc-500" : "text-zinc-400")}>Destino</p>
+                <p className={cn("text-sm font-mono flex items-center gap-2", isDark ? "text-zinc-300" : "text-zinc-705")}>
+                  <ChevronRight className={cn("w-3.5 h-3.5", isDark ? "text-zinc-650" : "text-zinc-400")} /> {int.destination}
                 </p>
               </div>
-              <div>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Configurações</p>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400 border border-zinc-700">{int.protocol}:{int.port}</span>
+              <div className="col-span-2">
+                <p className={cn("text-[10px] uppercase tracking-wider font-semibold mb-1.5", isDark ? "text-zinc-500" : "text-zinc-400")}>Configurações</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={cn("px-2 py-0.5 rounded text-[10px] border transition-colors", isDark ? "bg-zinc-800 text-zinc-400 border-zinc-750" : "bg-zinc-100 text-zinc-650 border-zinc-300")}>{int.protocol}:{int.port}</span>
                   {int.tls_version && (
-                    <span className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-500 border border-zinc-700">{int.tls_version}</span>
+                    <span className={cn("px-2 py-0.5 rounded text-[10px] border transition-colors", isDark ? "bg-zinc-800 text-zinc-400 border-zinc-750" : "bg-zinc-100 text-zinc-650 border-zinc-300")}>{int.tls_version}</span>
                   )}
                   <span className={cn(
-                    "px-2 py-0.5 rounded text-[10px] border",
-                    int.access_type === 'Public' ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                    "px-2 py-0.5 rounded text-[10px] border transition-colors",
+                    int.access_type === 'Public' 
+                      ? (isDark ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-250") 
+                      : (isDark ? "bg-zinc-800 text-zinc-305 border-zinc-700" : "bg-zinc-100 text-zinc-700 border-zinc-300")
                   )}>{int.access_type}</span>
                 </div>
               </div>
               {int.observations && (
-                <div className="col-span-2 mt-2 pt-4 border-t border-zinc-800">
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Observações</p>
-                  <p className="text-xs text-zinc-400 italic line-clamp-2">"{int.observations}"</p>
+                <div className={cn("col-span-2 mt-2 pt-4 border-t", isDark ? "border-zinc-850" : "border-zinc-300")}>
+                  <p className={cn("text-[10px] uppercase tracking-wider font-semibold mb-1", isDark ? "text-zinc-500" : "text-zinc-400")}>Observações</p>
+                  <p className={cn("text-xs italic", isDark ? "text-zinc-450" : "text-zinc-550")}>"{int.observations}"</p>
                 </div>
               )}
             </div>
           </div>
         ))}
         {integrations.length === 0 && (
-          <div className="col-span-full py-20 border-2 border-dashed border-zinc-800 rounded-3xl flex flex-col items-center justify-center text-zinc-500">
+          <div className={cn("col-span-full py-20 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center transition-colors", isDark ? "border-zinc-800 text-zinc-500" : "border-zinc-300 text-zinc-400")}>
             <Database className="w-12 h-12 mb-4 opacity-20" />
-            <p>Nenhuma integração cadastrada.</p>
+            <p className="text-sm">Nenhuma integração cadastrada.</p>
           </div>
         )}
       </div>
 
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+              className={cn("w-full max-w-lg border rounded-2xl shadow-2xl overflow-hidden transition-colors", isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200")}
             >
-              <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white">{editingIntegration ? 'Editar Integração' : 'Nova Integração'}</h3>
-                <button onClick={closeModal} className="text-zinc-500 hover:text-white"><X className="w-5 h-5" /></button>
+              <div className={cn("px-6 py-4 border-b flex items-center justify-between transition-colors", isDark ? "border-zinc-800" : "border-zinc-100")}>
+                <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>{editingIntegration ? 'Editar Integração' : 'Nova Integração'}</h3>
+                <button onClick={closeModal} className={cn("transition-colors", isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-900")}><X className="w-5 h-5" /></button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={onSubmit} className="p-6 space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Nome do Serviço</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-450">Nome do Serviço</label>
                   <input 
                     required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-600/50"
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                      isDark 
+                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-600 focus:border-zinc-650" 
+                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                    )}
                     placeholder="Ex: ERP Sync, Webhook Receiver"
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
@@ -427,19 +483,29 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">IP/Host Origem</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-455">IP/Host Origem</label>
                     <input 
                       required
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-600/50"
+                      className={cn(
+                        "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-600 focus:border-zinc-650" 
+                          : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                      )}
                       value={formData.origin}
                       onChange={e => setFormData({...formData, origin: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">IP/Host Destino</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-455">IP/Host Destino</label>
                     <input 
                       required
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-600/50"
+                      className={cn(
+                        "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-600 focus:border-zinc-650" 
+                          : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                      )}
                       value={formData.destination}
                       onChange={e => setFormData({...formData, destination: e.target.value})}
                     />
@@ -447,11 +513,16 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Porta</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-455">Porta</label>
                     <input 
                       type="text"
                       required
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-600/50"
+                      className={cn(
+                        "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-600 focus:border-zinc-650" 
+                          : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                      )}
                       value={formData.port}
                       onChange={e => {
                         const val = e.target.value.replace(/\D/g, '');
@@ -460,9 +531,12 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Protocolo</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-450 border-0 h-[17px]">Protocolo</label>
                     <select 
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none"
+                      className={cn(
+                        "w-full rounded-xl px-2 py-2.5 outline-none transition-colors border",
+                        isDark ? "bg-zinc-800 border-zinc-700 text-zinc-200" : "bg-zinc-50 border-zinc-200 text-zinc-800"
+                      )}
                       value={formData.protocol}
                       onChange={e => setFormData({...formData, protocol: e.target.value})}
                     >
@@ -473,9 +547,12 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Acesso</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-450 border-0 h-[17px]">Acesso</label>
                     <select 
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none"
+                      className={cn(
+                        "w-full rounded-xl px-2 py-2.5 outline-none transition-colors border",
+                        isDark ? "bg-zinc-800 border-zinc-700 text-zinc-200" : "bg-zinc-50 border-zinc-200 text-zinc-800"
+                      )}
                       value={formData.access_type}
                       onChange={e => setFormData({...formData, access_type: e.target.value})}
                     >
@@ -486,24 +563,42 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Inspeção SSL/TLS (quando aplicável)</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-450">Inspeção SSL/TLS</label>
                   <input 
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-600/50"
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                      isDark 
+                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-600 focus:border-zinc-650" 
+                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                    )}
                     placeholder="Ex: TLS 1.2, TLS 1.3 ou Inspeção Ativa"
                     value={formData.tls_version}
                     onChange={e => setFormData({...formData, tls_version: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Observações</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-zinc-450">Observações</label>
                   <textarea 
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-600/50 min-h-[80px]"
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border min-h-[80px]",
+                      isDark 
+                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-600 focus:border-zinc-650" 
+                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                    )}
                     placeholder="Notas adicionais sobre esta integração..."
                     value={formData.observations}
                     onChange={e => setFormData({...formData, observations: e.target.value})}
                   />
                 </div>
-                <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-xl shadow-blue-600/20 mt-4">
+                <button 
+                  type="submit"
+                  className={cn(
+                    "w-full font-bold py-3 rounded-xl transition-all shadow-sm mt-4",
+                    isDark 
+                      ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-950" 
+                      : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                  )}
+                >
                   {editingIntegration ? 'Salvar Alterações' : 'Criar Integração'}
                 </button>
               </form>
@@ -514,28 +609,28 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
 
       <AnimatePresence>
         {showDeleteConfirm !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden p-6 text-center"
+              className={cn("w-full max-w-sm border rounded-2xl shadow-2xl overflow-hidden p-6 text-center transition-colors", isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200")}
             >
-              <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-500" />
+              <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-rose-500" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Confirmar Exclusão</h3>
-              <p className="text-zinc-500 text-sm mb-6">Tem certeza que deseja excluir esta integração? Todos os logs relacionados serão mantidos no histórico, mas a integração deixará de existir.</p>
+              <h3 className={cn("text-lg font-bold mb-2", isDark ? "text-white" : "text-zinc-900")}>Confirmar Exclusão</h3>
+              <p className={cn("text-sm mb-6", isDark ? "text-zinc-450" : "text-zinc-500")}>Tem certeza que deseja excluir esta integração? Todos os logs relacionados serão mantidos no histórico, mas a integração deixará de existir.</p>
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => setShowDeleteConfirm(null)}
-                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-colors"
+                  className={cn("px-4 py-2.5 rounded-xl font-medium transition-colors border", isDark ? "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-200")}
                 >
                   Cancelar
                 </button>
                 <button 
                   onClick={() => handleDelete(showDeleteConfirm)}
-                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition-colors shadow-lg shadow-red-600/20"
+                  className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium transition-colors shadow-sm"
                 >
                   Excluir
                 </button>
@@ -548,7 +643,7 @@ const Integrations = ({ integrations, fetchIntegrations, userRole }: { integrati
   );
 };
 
-const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: { logs: Log[], integrations: Integration[], simulateLogs: () => void, exportPDF: (data: Log[]) => void, exportCSV: (data: Log[]) => void }) => {
+const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV, isDark }: { logs: Log[], integrations: Integration[], simulateLogs: () => void, exportPDF: (data: Log[]) => void, exportCSV: (data: Log[]) => void, isDark: boolean }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterIntegration, setFilterIntegration] = useState<number | 'all'>('all');
   const itemsPerPage = 10;
@@ -573,12 +668,17 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Logs de Tráfego</h2>
-          <p className="text-zinc-500 text-sm">Monitoramento detalhado de cada requisição.</p>
+          <h2 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Logs de Tráfego</h2>
+          <p className={cn("text-sm", isDark ? "text-zinc-500" : "text-zinc-600")}>Monitoramento detalhado de cada requisição.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select 
-            className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500/50 transition-colors"
+            className={cn(
+              "text-sm rounded-xl px-4 py-2 focus:outline-none transition-colors border",
+              isDark 
+                ? "bg-zinc-900 border-zinc-805 text-zinc-300 focus:border-zinc-700" 
+                : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300"
+            )}
             value={filterIntegration}
             onChange={(e) => setFilterIntegration(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
           >
@@ -587,34 +687,49 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
               <option key={int.id} value={int.id}>{int.name}</option>
             ))}
           </select>
-          <div className="h-6 w-px bg-zinc-800 mx-1" />
+          <div className={cn("h-6 w-px mx-1 hidden sm:block", isDark ? "bg-zinc-800" : "bg-zinc-200")} />
           <button 
             onClick={simulateLogs}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-xl text-sm font-medium border border-zinc-700 transition-all"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors",
+              isDark 
+                ? "bg-zinc-900 border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700" 
+                : "bg-white border-zinc-205 text-zinc-800 hover:bg-zinc-100 hover:border-zinc-250"
+            )}
           >
             <RefreshCw className="w-4 h-4" /> Simular Fluxo
           </button>
-          <div className="h-6 w-px bg-zinc-800 mx-1" />
+          <div className={cn("h-6 w-px mx-1 hidden sm:block", isDark ? "bg-zinc-800" : "bg-zinc-200")} />
           <button 
             onClick={() => exportCSV(filteredLogs)}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-xl text-sm font-medium border border-zinc-700 transition-all"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors",
+              isDark 
+                ? "bg-zinc-900 border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700" 
+                : "bg-white border-zinc-205 text-zinc-800 hover:bg-zinc-100 hover:border-zinc-250"
+            )}
           >
             <Download className="w-4 h-4" /> CSV
           </button>
           <button 
             onClick={() => exportPDF(filteredLogs)}
-            className="flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 px-4 py-2 rounded-xl text-sm font-medium border border-blue-500/20 transition-all"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors",
+              isDark 
+                ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200" 
+                : "bg-zinc-900 text-white hover:bg-zinc-800"
+            )}
           >
             <FileText className="w-4 h-4" /> PDF
           </button>
         </div>
       </div>
 
-      <div className="overflow-hidden bg-zinc-900 border border-zinc-800 rounded-2xl">
+      <div className={cn("overflow-hidden border rounded-2xl transition-colors", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-200 shadow-sm")}>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-950/30">
+              <tr className={cn("border-b transition-colors", isDark ? "border-zinc-800 bg-zinc-950/20" : "border-zinc-100 bg-zinc-50")}>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">TS / Service</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Origem / Geo</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Action</th>
@@ -622,25 +737,25 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Info / TLS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className={cn("divide-y transition-colors", isDark ? "divide-zinc-800" : "divide-zinc-105")}>
               {currentLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-zinc-800/20 transition-colors">
+                <tr key={log.id} className={cn("transition-colors", isDark ? "hover:bg-zinc-800/20" : "hover:bg-zinc-50")}>
                   <td className="px-6 py-4">
-                    <p className="text-xs text-white font-medium">{log.integration_name}</p>
+                    <p className={cn("text-xs font-semibold", isDark ? "text-white" : "text-zinc-900")}>{log.integration_name}</p>
                     <p className="text-[10px] text-zinc-500 font-mono mt-1">{new Date(log.timestamp).toLocaleTimeString()}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-xs text-zinc-300 font-mono">{log.ip}</p>
+                    <p className={cn("text-xs font-mono", isDark ? "text-zinc-300" : "text-zinc-700")}>{log.ip}</p>
                     <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1">
-                      <Globe className="w-3 h-3" /> {log.geo}
+                      <Globe className="w-3.5 h-3.5" /> {log.geo}
                     </p>
                   </td>
                   <td className="px-6 py-4">
                     <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded",
-                      log.method === 'GET' ? "bg-green-500/10 text-green-500" : 
-                      log.method === 'POST' ? "bg-blue-500/10 text-blue-500" : 
-                      "bg-orange-500/10 text-orange-500"
+                      "text-[10px] font-mono px-2 py-0.5 rounded border transition-colors",
+                      log.method === 'GET' ? (isDark ? "bg-zinc-800 border-zinc-750 text-zinc-300" : "bg-zinc-100 border-zinc-200 text-zinc-750") : 
+                      log.method === 'POST' ? (isDark ? "bg-zinc-800 border-zinc-750 text-zinc-300" : "bg-zinc-100 border-zinc-200 text-zinc-750") : 
+                      (isDark ? "bg-zinc-800 border-zinc-750 text-zinc-350" : "bg-zinc-105 border-zinc-200 text-zinc-800")
                     )}>
                       {log.method}
                     </span>
@@ -648,8 +763,8 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
                   <td className="px-6 py-4">
                     <span className={cn(
                       "text-xs font-bold",
-                      log.status < 300 ? "text-green-500" : 
-                      log.status < 500 ? "text-orange-500" : "text-red-500"
+                      log.status < 300 ? (isDark ? "text-emerald-400" : "text-emerald-600") : 
+                      log.status < 500 ? (isDark ? "text-amber-400" : "text-amber-600") : (isDark ? "text-rose-450" : "text-rose-600")
                     )}>
                       {log.status}
                     </span>
@@ -657,19 +772,21 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className={cn(
-                        "text-[9px] px-1.5 py-0.5 rounded-md border",
-                        log.auth_status === 'success' ? "bg-zinc-800 text-zinc-400 border-zinc-700" : "bg-red-500/10 text-red-400 border-red-500/20"
+                        "text-[9px] px-1.5 py-0.5 rounded-md border transition-colors",
+                        log.auth_status === 'success' 
+                          ? (isDark ? "bg-zinc-805 text-zinc-400 border-zinc-750" : "bg-zinc-100 text-zinc-650 border-zinc-200") 
+                          : (isDark ? "bg-rose-500/10 text-rose-450 border-rose-500/20" : "bg-rose-50 text-rose-650 border-rose-200")
                       )}>
                         Auth: {log.auth_status}
                       </span>
-                      <span className="text-[9px] text-zinc-500">{log.tls_version}</span>
+                      <span className="text-[9px] text-zinc-500 font-mono">{log.tls_version}</span>
                     </div>
                   </td>
                 </tr>
               ))}
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-zinc-500">
+                  <td colSpan={5} className="px-6 py-20 text-center text-zinc-500 text-sm">
                     Nenhum log encontrado. Clique em "Simular Fluxo".
                   </td>
                 </tr>
@@ -680,15 +797,20 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
 
         {/* Pagination */}
         {logs.length > 0 && (
-          <div className="px-6 py-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-950/20">
+          <div className={cn("px-6 py-4 border-t flex items-center justify-between transition-colors", isDark ? "border-zinc-850 bg-zinc-950/20" : "border-zinc-150 bg-zinc-50")}>
             <p className="text-xs text-zinc-500">
-              Mostrando <span className="text-zinc-300 font-medium">{startIndex + 1}</span> a <span className="text-zinc-300 font-medium">{Math.min(startIndex + itemsPerPage, logs.length)}</span> de <span className="text-zinc-300 font-medium">{logs.length}</span> logs
+              Mostrando <span className={cn("font-medium", isDark ? "text-zinc-300" : "text-zinc-800")}>{startIndex + 1}</span> a <span className={cn("font-medium", isDark ? "text-zinc-300" : "text-zinc-800")}>{Math.min(startIndex + itemsPerPage, logs.length)}</span> de <span className={cn("font-medium", isDark ? "text-zinc-300" : "text-zinc-800")}>{logs.length}</span> logs
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <button 
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className={cn(
+                  "p-2 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed",
+                  isDark 
+                    ? "border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800" 
+                    : "border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
+                )}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -697,7 +819,7 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
                 {[...Array(totalPages)].map((_, i) => {
                   const page = i + 1;
                   if (totalPages > 5 && Math.abs(page - currentPage) > 1 && page !== 1 && page !== totalPages) {
-                    if (Math.abs(page - currentPage) === 2) return <span key={page} className="text-zinc-600 px-1">...</span>;
+                    if (Math.abs(page - currentPage) === 2) return <span key={page} className="text-zinc-500 px-1">...</span>;
                     return null;
                   }
                   return (
@@ -705,10 +827,10 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
                       key={page}
                       onClick={() => goToPage(page)}
                       className={cn(
-                        "w-8 h-8 rounded-lg text-xs font-medium transition-all",
+                        "w-8 h-8 rounded-lg text-xs font-semibold transition-all",
                         currentPage === page 
-                          ? "bg-blue-600 text-white" 
-                          : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"
+                          ? (isDark ? "bg-zinc-100 text-zinc-950" : "bg-zinc-900 text-white font-bold") 
+                          : (isDark ? "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800" : "text-zinc-500 hover:text-zinc-905 hover:bg-zinc-150")
                       )}
                     >
                       {page}
@@ -720,7 +842,12 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
               <button 
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className={cn(
+                  "p-2 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed",
+                  isDark 
+                    ? "border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800" 
+                    : "border-zinc-200 text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950"
+                )}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -732,7 +859,617 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV }: {
   );
 };
 
-const UserManagement = () => {
+interface ApiKey {
+  id: number;
+  key_value: string;
+  name: string;
+  integration_id: number;
+  integration_name: string;
+  created_at: string;
+}
+
+const KeyManagement = ({ isDark, integrations, onLogAdded }: { isDark: boolean, integrations: Integration[], onLogAdded?: () => void }) => {
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<number | string | null>(null);
+  const [codeTab, setCodeTab] = useState<'js' | 'php'>('js');
+  const [formData, setFormData] = useState({
+    name: '',
+    integration_id: ''
+  });
+
+  // Simulator States
+  const [testKey, setTestKey] = useState("");
+  const [testIp, setTestIp] = useState("186.230.12.98");
+  const [testGeo, setTestGeo] = useState("São Paulo, Brazil");
+  const [testMethod, setTestMethod] = useState("POST");
+  const [testStatus, setTestStatus] = useState("201");
+  const [testAuthStatus, setTestAuthStatus] = useState("success");
+  const [testTlsVersion, setTestTlsVersion] = useState("TLS 1.3");
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
+
+  const fetchKeys = async () => {
+    try {
+      const res = await axios.get('/api/api-keys');
+      setKeys(res.data);
+    } catch (e) {
+      console.error("Erro ao carregar chaves", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchKeys();
+  }, []);
+
+  useEffect(() => {
+    if (keys.length > 0 && !testKey) {
+      setTestKey(keys[0].key_value);
+    }
+  }, [keys, testKey]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.integration_id) return;
+    setLoading(true);
+    try {
+      const res = await axios.post('/api/api-keys', {
+        name: formData.name,
+        integration_id: parseInt(formData.integration_id)
+      });
+      setNewKey(res.data.key_value);
+      fetchKeys();
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Erro ao criar chave de API");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm("Revogar esta chave impedirá imediatamente qualquer sistema externo de registrar logs de rede associados. Deseja continuar?")) {
+      try {
+        await axios.delete(`/api/api-keys/${id}`);
+        fetchKeys();
+      } catch (e) {
+        alert("Erro ao excluir chave");
+      }
+    }
+  };
+
+  const handleCopy = (text: string, id: number | string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleTestSend = async () => {
+    if (!testKey) {
+      alert("Selecione ou digite uma chave de API para rodar o teste.");
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await axios.post("/api/logs/register", {
+        ip: testIp,
+        geo: testGeo,
+        method: testMethod,
+        status: parseInt(testStatus),
+        auth_status: testAuthStatus,
+        tls_version: testTlsVersion
+      }, {
+        headers: {
+          "X-API-Key": testKey
+        }
+      });
+      setTestResult({
+        success: true,
+        status: res.status,
+        data: res.data
+      });
+      if (onLogAdded) {
+        onLogAdded();
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        status: err.response?.status || 500,
+        data: err.response?.data || { error: err.message }
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const baseUrl = window.location.origin;
+
+  const codeJs = `// Exemplo de integração em JavaScript (Node.js/Fetch)
+fetch("${baseUrl}/api/logs/register", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": "${keys[0]?.key_value || 'nexus_key_sua_chave_aqui'}"
+  },
+  body: JSON.stringify({
+    ip: "186.230.12.98",
+    geo: "São Paulo, Brazil",
+    method: "POST",
+    status: 201,
+    auth_status: "success",
+    tls_version: "TLS 1.3"
+  })
+})
+  .then(res => res.json())
+  .then(data => console.log("Retorno central:", data))
+  .catch(err => console.error("Falha no transporte:", err));`;
+
+  const codePhp = `<?php
+// Exemplo de integração em PHP (cURL)
+$api_url = "${baseUrl}/api/logs/register";
+$api_key = "${keys[0]?.key_value || 'nexus_key_sua_chave_aqui'}";
+
+$payload = [
+    "ip" => "186.230.12.98",
+    "geo" => "São Paulo, Brazil",
+    "method" => "POST",
+    "status" => 201,
+    "auth_status" => "success",
+    "tls_version" => "TLS 1.3"
+];
+
+$ch = curl_init($api_url);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => json_encode($payload),
+    CURLOPT_HTTPHEADER => [
+        "Content-Type: application/json",
+        "X-API-Key: " . $api_key
+    ]
+]);
+
+$response = curl_exec($ch);
+if (curl_errno($ch)) {
+    echo "Erro Curl: " . curl_error($ch);
+} else {
+    echo "Servidor respondeu: " . $response;
+}
+curl_close($ch);
+?>`;
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Chaves de Acesso API</h2>
+          <p className={cn("text-sm", isDark ? "text-zinc-500" : "text-zinc-650")}>
+            Crie, gerencie e revogue chaves para que sistemas externos gravem logs nesta plataforma.
+          </p>
+        </div>
+        <button 
+          onClick={() => {
+            setFormData({ name: '', integration_id: integrations[0]?.id?.toString() || '' });
+            setNewKey(null);
+            setShowModal(true);
+          }}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm self-start sm:self-auto",
+            isDark 
+              ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200" 
+              : "bg-zinc-900 text-white hover:bg-zinc-800"
+          )}
+        >
+          <Plus className="w-5 h-5" /> Nova Chave
+        </button>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* API Keys List */}
+        <div className="lg:col-span-2 space-y-4">
+          <h3 className={cn("text-sm font-semibold uppercase tracking-wider", isDark ? "text-zinc-400" : "text-zinc-500")}>Minhas Chaves Ativas</h3>
+          
+          {keys.length === 0 ? (
+            <div className={cn("border border-dashed p-10 rounded-2xl text-center flex flex-col items-center justify-center transition-colors", isDark ? "border-zinc-800" : "border-zinc-300 bg-white shadow-sm")}>
+              <Key className={cn("w-10 h-10 mb-3 opacity-20", isDark ? "text-white" : "text-zinc-900")} />
+              <p className={cn("text-sm mb-4", isDark ? "text-zinc-500" : "text-zinc-650")}>Você ainda não possui nenhuma chave de API registrada.</p>
+              <button 
+                onClick={() => {
+                  setFormData({ name: '', integration_id: integrations[0]?.id?.toString() || '' });
+                  setNewKey(null);
+                  setShowModal(true);
+                }}
+                className={cn(
+                  "text-xs font-semibold px-4 py-2 rounded-xl transition-all border",
+                  isDark 
+                    ? "border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 text-zinc-300" 
+                    : "border-zinc-300 hover:border-zinc-400 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                )}
+              >
+                Criar primeira chave
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {keys.map(k => (
+                <div 
+                  key={k.id} 
+                  className={cn(
+                    "p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4",
+                    isDark ? "bg-zinc-900 border-zinc-850 hover:border-zinc-800" : "bg-white border-zinc-300 shadow-sm hover:border-zinc-400"
+                  )}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn("font-bold text-base", isDark ? "text-white" : "text-zinc-900")}>
+                        {k.name}
+                      </span>
+                      <span className={cn(
+                        "text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border",
+                        isDark ? "bg-zinc-800 border-zinc-700 text-zinc-400" : "bg-zinc-100 border-zinc-300 text-zinc-500"
+                      )}>
+                        {k.integration_name || "Desconhecido"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <code className={cn(
+                        "text-xs font-mono px-2.5 py-1 rounded select-all transition-colors",
+                        isDark ? "bg-zinc-950 text-zinc-400" : "bg-zinc-100 text-zinc-700"
+                      )}>
+                        {k.key_value.substring(0, 14)}••••••••••••••••
+                      </code>
+                      <button 
+                        onClick={() => handleCopy(k.key_value, k.id)}
+                        className={cn(
+                          "p-1.5 rounded transition-colors",
+                          isDark ? "hover:bg-zinc-800 text-zinc-500 hover:text-white" : "hover:bg-zinc-100 text-zinc-500 hover:text-black"
+                        )}
+                        title="Copiar API Key"
+                      >
+                        {copiedId === k.id ? <Check className="w-4.5 h-4.5 text-emerald-500" /> : <Copy className="w-4.5 h-4.5" />}
+                      </button>
+                    </div>
+
+                    <p className={cn("text-[10px]", isDark ? "text-zinc-500" : "text-zinc-400")}>
+                      Criada em: {new Date(k.created_at).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => handleDelete(k.id)}
+                    className={cn(
+                      "p-2.5 rounded-xl border flex items-center justify-center transition-colors group self-start sm:self-auto",
+                      isDark 
+                        ? "border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/5" 
+                        : "border-zinc-300 hover:border-zinc-400 text-zinc-500 hover:text-rose-600 hover:bg-rose-50"
+                    )}
+                    title="Revogar chave"
+                  >
+                    <Trash2 className="w-4.5 h-4.5 transition-transform group-hover:scale-105" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Integration Instructions & Code Examples */}
+        <div className="space-y-4">
+          <h3 className={cn("text-sm font-semibold uppercase tracking-wider", isDark ? "text-zinc-400" : "text-zinc-500")}>Como Integrar</h3>
+          
+          <div className={cn("p-6 rounded-2xl border space-y-4 text-start font-sans", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-zinc-500" />
+              <h4 className={cn("text-sm font-bold", isDark ? "text-white" : "text-zinc-900")}>Envio de Logs Externos</h4>
+            </div>
+            
+            <p className={cn("text-xs leading-relaxed", isDark ? "text-zinc-400" : "text-zinc-650")}>
+              Qualquer microsserviço ou servidor externo pode enviar registros usando o endpoint global listado abaixo. Lembre-se de anexar a API Key no cabeçalho.
+            </p>
+
+            <div className="space-y-2">
+              <span className={cn("text-[10px] font-bold uppercase tracking-wider text-zinc-400", isDark ? "text-zinc-500" : "text-zinc-455")}>Método e URL:</span>
+              <div className={cn("font-mono text-xs p-3 rounded-lg border flex items-center gap-2 select-all", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-800")}>
+                <span className="font-bold text-emerald-500">POST</span>
+                <span className="truncate">{baseUrl}/api/logs/register</span>
+              </div>
+            </div>
+
+            {/* Code switcher tabs */}
+            <div className="space-y-3">
+              <div className="flex border-b border-zinc-700/50">
+                <button 
+                  onClick={() => setCodeTab('js')}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors",
+                    codeTab === 'js'
+                      ? (isDark ? "border-white text-white" : "border-zinc-900 text-zinc-900")
+                      : "border-transparent text-zinc-500 hover:text-zinc-400"
+                  )}
+                >
+                  Node.js / JS
+                </button>
+                <button 
+                  onClick={() => setCodeTab('php')}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors",
+                    codeTab === 'php'
+                      ? (isDark ? "border-white text-white" : "border-zinc-900 text-zinc-900")
+                      : "border-transparent text-zinc-500 hover:text-zinc-400"
+                  )}
+                >
+                  PHP
+                </button>
+              </div>
+
+              <div className="relative group">
+                <pre className={cn(
+                  "font-mono text-[10px] p-4 rounded-xl overflow-x-auto max-h-[280px] leading-relaxed border select-all",
+                  isDark ? "bg-zinc-950 border-zinc-850 text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-805"
+                )}>
+                  {codeTab === 'js' ? codeJs : codePhp}
+                </pre>
+                <button 
+                  onClick={() => handleCopy(codeTab === 'js' ? codeJs : codePhp, 'code')}
+                  className={cn(
+                    "absolute top-2 right-2 p-1.5 rounded border opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900/40 text-zinc-400 hover:text-white border-zinc-700/30"
+                  )}
+                  title="Copiar código"
+                >
+                  {copiedId === 'code' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 🛠️ Playground Simulador Card (Bypass SSO) */}
+          <div className={cn("p-6 rounded-2xl border space-y-4 text-start font-sans", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-indigo-500 animate-pulse" />
+              <h4 className={cn("text-sm font-bold", isDark ? "text-white" : "text-zinc-900")}>Simulador Instantâneo (Bypass SSO)</h4>
+            </div>
+
+            <p className={cn("text-xs leading-relaxed", isDark ? "text-zinc-400" : "text-zinc-650")}>
+              Como seu workspace de desenvolvimento requer login do Google, requisições feitas por ferramentas externas como o <strong>Thunder Client</strong> ou servidores de teste recebem o redirecionamento Single Sign-On (Login Page).
+            </p>
+            <p className={cn("text-xs leading-relaxed font-semibold", isDark ? "text-indigo-400" : "text-indigo-600")}>
+              Utilize o formulário abaixo para enviar requisições reais contendo sua API Key diretamente através do navegador autenticado!
+            </p>
+
+            <div className="space-y-4 pt-2 border-t border-zinc-800/40">
+              {/* Key selection */}
+              <div>
+                <label className={cn("text-[10px] font-bold uppercase tracking-wider block mb-1", isDark ? "text-zinc-450" : "text-zinc-550")}>Chave de API do Envio</label>
+                <select
+                  className={cn(
+                    "w-full rounded-lg px-3 py-2 outline-none border text-xs font-mono",
+                    isDark 
+                      ? "bg-zinc-950 border-zinc-850 text-zinc-200" 
+                      : "bg-zinc-50 border-zinc-250 text-zinc-800"
+                  )}
+                  value={testKey}
+                  onChange={e => setTestKey(e.target.value)}
+                >
+                  <option value="">-- Selecione uma chave --</option>
+                  {keys.map(k => (
+                    <option key={k.id} value={k.key_value}>
+                      {k.name} ({k.key_value.substring(0, 10)}...)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Advanced payload inputs */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>Região / Cidade</label>
+                  <input
+                    type="text"
+                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
+                    value={testGeo}
+                    onChange={e => setTestGeo(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>IP Externo</label>
+                  <input
+                    type="text"
+                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs font-mono", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
+                    value={testIp}
+                    onChange={e => setTestIp(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>Método</label>
+                  <select
+                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
+                    value={testMethod}
+                    onChange={e => setTestMethod(e.target.value)}
+                  >
+                    <option value="POST">POST</option>
+                    <option value="GET">GET</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>Código Log</label>
+                  <select
+                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
+                    value={testStatus}
+                    onChange={e => setTestStatus(e.target.value)}
+                  >
+                    <option value="201">201 (Created)</option>
+                    <option value="200">200 (OK)</option>
+                    <option value="400">400 (Bad Request)</option>
+                    <option value="401">401 (Unauthorized)</option>
+                    <option value="403">403 (Forbidden)</option>
+                    <option value="500">500 (Server Error)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Instant Sim Action button */}
+              <button
+                onClick={handleTestSend}
+                disabled={testing || !testKey}
+                className={cn(
+                  "w-full text-xs font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm",
+                  isDark
+                    ? "bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-zinc-800 disabled:text-zinc-650"
+                    : "bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                )}
+              >
+                {testing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                {testing ? "Executando Requisição..." : "Testar e Gravar Log no Banco"}
+              </button>
+
+              {/* Simulation Result display */}
+              {testResult && (
+                <div className="space-y-1.5 pt-2 border-t border-zinc-800/40">
+                  <span className={cn("text-[9px] font-bold uppercase block", isDark ? "text-zinc-500" : "text-zinc-600")}>Resposta do Servidor:</span>
+                  {testResult.success ? (
+                    <div className={cn("p-3 rounded-xl border font-mono text-[10px] space-y-1 select-all leading-normal", isDark ? "bg-emerald-950/20 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-800")}>
+                      <span className="font-bold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> STATUS: {testResult.status}</span>
+                      <pre className="overflow-x-auto font-mono mt-1 whitespace-pre">{JSON.stringify(testResult.data, null, 2)}</pre>
+                    </div>
+                  ) : (
+                    <div className={cn("p-3 rounded-xl border font-mono text-[10px] space-y-1 select-all leading-normal", isDark ? "bg-rose-950/20 border-rose-500/10 text-rose-450" : "bg-rose-50 border-rose-250 text-rose-805")}>
+                      <span className="font-bold flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> STATUS: {testResult.status}</span>
+                      <pre className="overflow-x-auto font-mono mt-1 whitespace-pre">{JSON.stringify(testResult.data, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Nova Chave Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }} 
+              className={cn("w-full max-w-md border rounded-2xl shadow-2xl p-6 transition-colors", isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-300")}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className={cn("text-xl font-bold", isDark ? "text-white" : "text-zinc-900")}>Gerar Nova API Key</h3>
+                <button onClick={() => { setShowModal(false); setNewKey(null); }} className={cn("transition-colors", isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-950")}><X className="w-6 h-6" /></button>
+              </div>
+
+              {!newKey ? (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className={cn("text-xs font-bold uppercase mb-1.5 block", isDark ? "text-zinc-400" : "text-zinc-500")}>Identificador de Uso (Nome)</label>
+                    <input 
+                      required 
+                      className={cn(
+                        "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
+                          : "bg-zinc-50 border-zinc-250 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                      )}
+                      placeholder="Ex: API Backend, Servidor Python..."
+                      value={formData.name} 
+                      onChange={e => setFormData({...formData, name: e.target.value})} 
+                    />
+                  </div>
+
+                  <div>
+                    <label className={cn("text-xs font-bold uppercase mb-1.5 block", isDark ? "text-zinc-400" : "text-zinc-500")}>Integração Associada</label>
+                    <select 
+                      required
+                      className={cn(
+                        "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border text-sm",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
+                          : "bg-zinc-50 border-zinc-250 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                      )}
+                      value={formData.integration_id} 
+                      onChange={e => setFormData({...formData, integration_id: e.target.value})}
+                    >
+                      <option value="" disabled>Selecione uma integração...</option>
+                      {integrations.map(int => (
+                        <option key={int.id} value={int.id}>{int.name}</option>
+                      ))}
+                    </select>
+                    {integrations.length === 0 && (
+                      <p className="text-xs text-rose-500 mt-1 font-medium">Nota: Crie uma integração na aba Integrações primeiro!</p>
+                    )}
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={loading || integrations.length === 0} 
+                    className={cn(
+                      "w-full font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 text-sm",
+                      isDark 
+                        ? "bg-white hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 text-zinc-950" 
+                        : "bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-100 disabled:text-zinc-400 text-white"
+                    )}
+                  >
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Gerar Token de Acesso"}
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className={cn("p-4 rounded-xl border border-dashed text-center space-y-2", isDark ? "bg-zinc-950/40 border-zinc-850" : "bg-emerald-50/20 border-emerald-500/20")}>
+                    <p className={cn("text-xs font-bold text-emerald-500 uppercase flex items-center justify-center gap-1.5")}>
+                      <ShieldCheck className="w-4.5 h-4.5" /> Chave gerada com sucesso!
+                    </p>
+                    <p className={cn("text-[11px] leading-relaxed", isDark ? "text-zinc-400" : "text-zinc-600")}>
+                      Por motivos de segurança, você só pode visualizar este segredo agora. Guarde-o em um local protegido.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className={cn("text-[10px] font-bold uppercase text-zinc-400")}>Token de API</span>
+                    <div className={cn("p-3 rounded-xl border font-mono text-xs flex items-center justify-between gap-3 select-all", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-300" : "bg-zinc-50 border-zinc-300 text-zinc-850")}>
+                      <span className="break-all font-semibold font-mono">{newKey}</span>
+                      <button 
+                        onClick={() => handleCopy(newKey, 'newkey')}
+                        className={cn(
+                          "p-2 rounded hover:bg-white/10 text-zinc-500 hover:text-white transition-colors"
+                        )}
+                        title="Copiar Chave"
+                      >
+                        {copiedId === 'newkey' ? <Check className="w-4.5 h-4.5 text-emerald-500" /> : <Copy className="w-4.5 h-4.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => { setShowModal(false); setNewKey(null); }}
+                    className={cn(
+                      "w-full font-semibold py-2.5 rounded-xl transition-all text-sm mt-2 border",
+                      isDark 
+                        ? "border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-white" 
+                        : "border-zinc-300 bg-zinc-100 hover:bg-zinc-200 text-zinc-800"
+                    )}
+                  >
+                    Entendido e Guardado
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const UserManagement = ({ isDark }: { isDark: boolean }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -791,12 +1528,17 @@ const UserManagement = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Gestão de Acesso</h2>
-          <p className="text-zinc-500 text-sm">Controle quem pode acessar o dashboard.</p>
+          <h2 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Gestão de Acesso</h2>
+          <p className={cn("text-sm", isDark ? "text-zinc-500" : "text-zinc-600")}>Controle quem pode acessar o dashboard.</p>
         </div>
         <button 
           onClick={() => { setEditingUser(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-blue-500/20"
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm",
+            isDark 
+              ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200" 
+              : "bg-zinc-900 text-white hover:bg-zinc-800"
+          )}
         >
           <UserPlus className="w-5 h-5" /> Novo Usuário
         </button>
@@ -804,34 +1546,36 @@ const UserManagement = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map(u => (
-          <div key={u.id} className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col items-start gap-4">
+          <div key={u.id} className={cn("p-6 rounded-2xl border flex flex-col items-start gap-4 transition-colors", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-200 shadow-sm")}>
             <div className="flex items-center justify-between w-full">
-              <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-blue-500 font-bold border border-zinc-700">
+              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold border transition-colors", isDark ? "bg-zinc-800 border-zinc-700 text-zinc-300" : "bg-zinc-100 border-zinc-200 text-zinc-600")}>
                 {u.name.substring(0, 2).toUpperCase()}
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => { setEditingUser(u); setShowModal(true); }} className="p-2 text-zinc-500 hover:text-white transition-colors">
+                <button onClick={() => { setEditingUser(u); setShowModal(true); }} className={cn("p-2 rounded-lg transition-colors", isDark ? "text-zinc-500 hover:text-white hover:bg-zinc-800" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100")}>
                   <Pencil className="w-4 h-4" />
                 </button>
                 {u.username !== 'admin' && (
-                  <button onClick={() => handleDelete(u.id)} className="p-2 text-zinc-500 hover:text-red-500 transition-colors">
+                  <button onClick={() => handleDelete(u.id)} className={cn("p-2 rounded-lg transition-colors", isDark ? "text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10" : "text-zinc-500 hover:text-rose-600 hover:bg-rose-50")}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">{u.name}</h3>
-              <p className="text-sm text-zinc-500 italic">@{u.username}</p>
+              <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>{u.name}</h3>
+              <p className={cn("text-sm italic", isDark ? "text-zinc-500" : "text-zinc-400")}>@{u.username}</p>
             </div>
             <div className="flex items-center justify-between w-full mt-2">
               <span className={cn(
-                "text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-widest",
-                u.role === 'admin' ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                "text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-widest transition-colors",
+                u.role === 'admin' 
+                  ? (isDark ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : "bg-rose-50 text-rose-700 border-rose-200") 
+                  : (isDark ? "bg-zinc-800 text-zinc-300 border-zinc-700" : "bg-zinc-100 text-zinc-700 border-zinc-200")
               )}>
                 {u.role}
               </span>
-              <span className="text-[10px] text-zinc-500">{new Date(u.created_at || '').toLocaleDateString()}</span>
+              <span className={cn("text-[10px]", isDark ? "text-zinc-500" : "text-zinc-400")}>{new Date(u.created_at || '').toLocaleDateString()}</span>
             </div>
           </div>
         ))}
@@ -839,33 +1583,86 @@ const UserManagement = () => {
 
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }} 
+              className={cn("w-full max-w-md border rounded-2xl shadow-2xl p-6 transition-colors", isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200")}
+            >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-white">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h3>
-                <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-white"><X className="w-6 h-6" /></button>
+                <h3 className={cn("text-xl font-bold", isDark ? "text-white" : "text-zinc-900")}>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h3>
+                <button onClick={() => setShowModal(false)} className={cn("transition-colors", isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-950")}><X className="w-6 h-6" /></button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-zinc-400 uppercase mb-1 block">Nome Completo</label>
-                  <input required className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-600/50" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <label className="text-xs font-bold text-zinc-405 uppercase mb-1 block">Nome Completo</label>
+                  <input 
+                    required 
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                      isDark 
+                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
+                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                    )}
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-400 uppercase mb-1 block">Usuário (Login)</label>
-                  <input required className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-600/50" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} disabled={editingUser?.username === 'admin'} />
+                  <label className="text-xs font-bold text-zinc-405 uppercase mb-1 block">Usuário (Login)</label>
+                  <input 
+                    required 
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                      isDark 
+                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
+                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                    )}
+                    value={formData.username} 
+                    onChange={e => setFormData({...formData, username: e.target.value})} 
+                    disabled={editingUser?.username === 'admin'} 
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-400 uppercase mb-1 block">Senha {editingUser && '(deixe em branco para não alterar)'}</label>
-                  <input type="password" required={!editingUser} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-600/50" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                  <label className="text-xs font-bold text-zinc-405 uppercase mb-1 block">Senha {editingUser && '(deixe em branco para não alterar)'}</label>
+                  <input 
+                    type="password" 
+                    required={!editingUser} 
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
+                      isDark 
+                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
+                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                    )}
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-400 uppercase mb-1 block">Papel (Role)</label>
-                  <select className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white outline-none" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as any})} disabled={editingUser?.username === 'admin'}>
+                  <label className="text-xs font-bold text-zinc-450 uppercase mb-1 block">Papel (Role)</label>
+                  <select 
+                    className={cn(
+                      "w-full rounded-xl px-4 py-2.5 outline-none border",
+                      isDark ? "bg-zinc-800 border-zinc-700 text-white" : "bg-zinc-50 border-zinc-200 text-zinc-800"
+                    )}
+                    value={formData.role} 
+                    onChange={e => setFormData({...formData, role: e.target.value as any})} 
+                    disabled={editingUser?.username === 'admin'}
+                  >
                     <option value="client">Client</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-xl shadow-blue-600/20 mt-2">
+                <button 
+                  type="submit"
+                  className={cn(
+                    "w-full font-bold py-3 rounded-xl transition-all shadow-sm mt-2",
+                    isDark 
+                      ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-950" 
+                      : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                  )}
+                >
                   Salvar Usuário
                 </button>
               </form>
@@ -877,7 +1674,7 @@ const UserManagement = () => {
   );
 };
 
-const Login = ({ onLoginSuccess }: { onLoginSuccess: (user: User) => void }) => {
+const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (user: User) => void, isDark: boolean, toggleDarkMode: () => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -898,40 +1695,107 @@ const Login = ({ onLoginSuccess }: { onLoginSuccess: (user: User) => void }) => 
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/30 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
+    <div className={cn("min-h-screen flex items-center justify-center p-4 relative font-sans transition-colors duration-200", isDark ? "bg-zinc-950" : "bg-zinc-50")}>
+      <div className="absolute inset-0 overflow-hidden opacity-5 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-400 rounded-full blur-[140px]" />
       </div>
 
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-3xl shadow-2xl p-8 relative z-10">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-xl shadow-blue-600/20">
-            <Zap className="w-10 h-10 text-white" />
+      <div className="absolute top-6 right-6">
+        <button 
+          onClick={toggleDarkMode}
+          className={cn(
+            "p-2.5 rounded-xl border transition-colors",
+            isDark 
+              ? "border-zinc-900 bg-zinc-900/50 text-zinc-400 hover:text-white" 
+              : "border-zinc-300 bg-white text-zinc-650 hover:text-black hover:bg-zinc-100 shadow-sm"
+          )}
+        >
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+      </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className={cn(
+          "w-full max-w-sm border rounded-2xl p-8 relative z-10 shadow-xl transition-colors duration-200",
+          isDark 
+            ? "bg-zinc-950 border-zinc-900" 
+            : "bg-white border-zinc-300 shadow-lg text-zinc-900"
+        )}
+      >
+        <div className="flex flex-col items-start mb-8">
+          <div className={cn(
+            "w-12 h-12 rounded-full border flex items-center justify-center mb-4 shadow-sm transition-colors duration-200",
+            isDark 
+              ? "bg-white border-zinc-850 text-zinc-950" 
+              : "bg-zinc-900 border-zinc-800 text-white"
+          )}>
+            <Zap className="w-6 h-6" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Nexus <span className="text-blue-500">API</span></h1>
-          <p className="text-zinc-500 mt-2">Controle Central de Infraestrutura</p>
+          <h1 className={cn("text-2xl font-bold tracking-tight font-sans transition-colors duration-200", isDark ? "text-white" : "text-zinc-900")}>Nexus <span className="text-zinc-400 font-medium font-mono text-xl">API</span></h1>
+          <p className={cn("text-xs mt-1 transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>Painel Central de Infraestrutura</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">Usuário</label>
-            <input required className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-white placeholder-zinc-700 outline-none focus:ring-2 focus:ring-blue-600/50 transition-all border-b-4 border-b-transparent focus:border-b-blue-600" placeholder="Insira seu login" value={username} onChange={e => setUsername(e.target.value)} />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className={cn("text-[10px] font-bold uppercase tracking-widest block transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>Usuário</label>
+            <input 
+              required 
+              className={cn(
+                "w-full rounded-xl px-4 py-3 outline-none transition-colors duration-200 text-sm font-mono border",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-900 text-white placeholder-zinc-800 focus:border-zinc-700" 
+                  : "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400"
+              )}
+              placeholder="admin / client" 
+              value={username} 
+              onChange={e => setUsername(e.target.value)} 
+            />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">Senha</label>
-            <input type="password" required className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-white placeholder-zinc-700 outline-none focus:ring-2 focus:ring-blue-600/50 transition-all border-b-4 border-b-transparent focus:border-b-blue-600" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+          <div className="space-y-1.5">
+            <label className={cn("text-[10px] font-bold uppercase tracking-widest block transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>Senha</label>
+            <input 
+              type="password" 
+              required 
+              className={cn(
+                "w-full rounded-xl px-4 py-3 outline-none transition-colors duration-200 text-sm font-mono border",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-900 text-white placeholder-zinc-800 focus:border-zinc-700" 
+                  : "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400"
+              )}
+              placeholder="••••••••" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+            />
           </div>
 
-          {error && <p className="text-red-500 text-sm text-center font-medium bg-red-500/10 py-2 rounded-lg">{error}</p>}
+          {error && (
+            <p className={cn(
+              "text-xs font-mono font-medium py-2 px-3 rounded-lg border transition-colors duration-200",
+              isDark 
+                ? "text-rose-400 bg-rose-500/5 border-rose-500/10" 
+                : "text-rose-600 bg-rose-50 border-rose-200"
+            )}>
+              {error}
+            </p>
+          )}
 
-          <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 group">
-            {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Acessar Dashboard"}
+          <button 
+            disabled={loading} 
+            className={cn(
+              "w-full font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 text-sm",
+              isDark 
+                ? "bg-white hover:bg-zinc-200 disabled:bg-zinc-900 disabled:text-zinc-500 text-zinc-950" 
+                : "bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-100 disabled:text-zinc-400 text-white"
+            )}
+          >
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Acessar Dashboard"}
           </button>
         </form>
 
-        <div className="mt-8 pt-8 border-t border-zinc-800 text-center">
-          <p className="text-xs text-zinc-600 font-medium">Enterprise Security Protocol v4.2</p>
+        <div className={cn("mt-8 pt-6 border-t text-start transition-colors duration-200", isDark ? "border-zinc-900" : "border-zinc-200")}>
+          <p className={cn("text-[9px] font-mono tracking-wider uppercase transition-colors duration-200", isDark ? "text-zinc-600" : "text-zinc-500")}>Enterprise Protocol v4.5</p>
         </div>
       </motion.div>
     </div>
@@ -946,7 +1810,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const handleLogin = (userData: User) => {
@@ -1036,7 +1900,7 @@ export default function App() {
   };
 
   if (!user) {
-    return <Login onLoginSuccess={handleLogin} />;
+    return <Login onLoginSuccess={handleLogin} isDark={isDark} toggleDarkMode={() => setIsDark(!isDark)} />;
   }
 
   return (
@@ -1052,12 +1916,13 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className={cn(
-          "w-64 border-r border-zinc-900 bg-zinc-950 px-4 py-8 flex flex-col gap-1 transition-all duration-300 fixed lg:static inset-y-0 left-0 z-50",
+          "w-64 border-r px-4 py-8 flex flex-col gap-1 transition-all duration-300 fixed lg:static inset-y-0 left-0 z-50 transition-colors",
+          isDark ? "border-zinc-900 bg-zinc-950 text-zinc-200" : "border-zinc-200 bg-white text-zinc-900",
           !sidebarOpen && "lg:w-20 -translate-x-full lg:translate-x-0"
         )}>
           <div className="mb-6 px-2 flex items-center justify-between">
-             <span className={cn("text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]", !sidebarOpen && "hidden")}>Infrastructure</span>
-             <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-zinc-500"><X className="w-5 h-5" /></button>
+             <span className={cn("text-[10px] font-bold uppercase tracking-[0.2em] transition-colors", isDark ? "text-zinc-500" : "text-zinc-400", !sidebarOpen && "hidden")}>Infrastructure</span>
+             <button onClick={() => setSidebarOpen(false)} className={cn("lg:hidden transition-colors", isDark ? "text-zinc-500" : "text-zinc-400")}><X className="w-5 h-5" /></button>
           </div>
           
           <SidebarItem 
@@ -1071,6 +1936,12 @@ export default function App() {
             label={sidebarOpen ? "Integrações" : ""} 
             active={activeTab === 'integrations'} 
             onClick={() => setActiveTab('integrations')} 
+          />
+          <SidebarItem 
+            icon={Key} 
+            label={sidebarOpen ? "Chaves de API" : ""} 
+            active={activeTab === 'apiKeys'} 
+            onClick={() => setActiveTab('apiKeys')} 
           />
           <SidebarItem 
             icon={FileText} 
@@ -1088,10 +1959,10 @@ export default function App() {
             />
           )}
 
-          <div className="mt-auto border-t border-zinc-900 pt-6 px-2">
+          <div className={cn("mt-auto border-t pt-6 px-2 transition-colors", isDark ? "border-zinc-900" : "border-zinc-200")}>
              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                {sidebarOpen && <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Global Node: Active</span>}
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {sidebarOpen && <span className={cn("text-[10px] font-bold uppercase tracking-widest", isDark ? "text-zinc-500" : "text-zinc-400")}>Global Node: Active</span>}
              </div>
           </div>
         </aside>
@@ -1112,11 +1983,39 @@ export default function App() {
                       stats={stats} 
                       integrations={integrations} 
                       onFilterChange={(id) => setDashboardFilter(id)} 
+                      isDark={isDark}
                     />
                   )}
-                  {activeTab === 'integrations' && <Integrations integrations={integrations} fetchIntegrations={fetchData} userRole={user.role} />}
-                  {activeTab === 'logs' && <LogsTable logs={logs} integrations={integrations} simulateLogs={simulateLogs} exportPDF={exportPDF} exportCSV={exportCSV} />}
-                  {activeTab === 'users' && user.role === 'admin' && <UserManagement />}
+                  {activeTab === 'integrations' && (
+                    <Integrations 
+                      integrations={integrations} 
+                      fetchIntegrations={fetchData} 
+                      userRole={user.role} 
+                      isDark={isDark} 
+                    />
+                  )}
+                  {activeTab === 'apiKeys' && (
+                    <KeyManagement 
+                      isDark={isDark} 
+                      integrations={integrations}
+                      onLogAdded={fetchData}
+                    />
+                  )}
+                  {activeTab === 'logs' && (
+                    <LogsTable 
+                      logs={logs} 
+                      integrations={integrations} 
+                      simulateLogs={simulateLogs} 
+                      exportPDF={exportPDF} 
+                      exportCSV={exportCSV} 
+                      isDark={isDark} 
+                    />
+                  )}
+                  {activeTab === 'users' && user.role === 'admin' && (
+                    <UserManagement 
+                      isDark={isDark} 
+                    />
+                  )}
                </motion.div>
              </AnimatePresence>
           </div>
