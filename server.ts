@@ -1,74 +1,109 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
+import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 import crypto from "crypto";
 
 dotenv.config();
 
-const db = new Database("nexus.db");
+// MySQL connection settings from environment or fallback
+const dbConfig = {
+  host: process.env.DB_HOST || "193.203.175.153",
+  user: process.env.DB_USER || "u186798781_nexusapi",
+  password: process.env.DB_PASSWORD || "LdWeb2026@",
+  database: process.env.DB_NAME || "u186798781_nexusapi",
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+};
 
-// Initialize Database Schema
-db.exec(`
-  CREATE TABLE IF NOT EXISTS integrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    origin TEXT NOT NULL,
-    destination TEXT NOT NULL,
-    port INTEGER NOT NULL,
-    protocol TEXT NOT NULL,
-    access_type TEXT NOT NULL,
-    tls_version TEXT,
-    observations TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+const pool = mysql.createPool(dbConfig);
 
-  CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    integration_id INTEGER,
-    ip TEXT,
-    geo TEXT,
-    method TEXT,
-    status INTEGER,
-    auth_status TEXT,
-    tls_version TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(integration_id) REFERENCES integrations(id)
-  );
+// Initialize Database Schema on start
+async function initDb() {
+  try {
+    console.log("Initializing database tables if they do not exist...");
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS integrations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        origin VARCHAR(255) NOT NULL,
+        destination VARCHAR(255) NOT NULL,
+        port INT NOT NULL,
+        protocol VARCHAR(50) NOT NULL,
+        access_type VARCHAR(50) NOT NULL,
+        tls_version VARCHAR(50),
+        observations TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  CREATE TABLE IF NOT EXISTS api_keys (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    key_value TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    integration_id INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(integration_id) REFERENCES integrations(id) ON DELETE CASCADE
-  );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        integration_id INT,
+        ip VARCHAR(50),
+        geo VARCHAR(255),
+        method VARCHAR(10),
+        status INT,
+        auth_status VARCHAR(50),
+        tls_version VARCHAR(50),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(integration_id) REFERENCES integrations(id) ON DELETE CASCADE
+      )
+    `);
 
-  CREATE TABLE IF NOT EXISTS alerts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,
-    threshold INTEGER,
-    active BOOLEAN DEFAULT 1
-  );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        key_value VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        integration_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(integration_id) REFERENCES integrations(id) ON DELETE CASCADE
+      )
+    `);
 
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'client',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS alerts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        threshold INT,
+        active TINYINT DEFAULT 1
+      )
+    `);
 
-  -- Insert default admin if not exists
-  INSERT OR IGNORE INTO users (username, password, name, role) 
-  VALUES ('admin', 'admin123', 'Administrador Nexus', 'admin');
-`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'client',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default admin if not exists
+    await pool.query(`
+      INSERT IGNORE INTO users (username, password, name, role) 
+      VALUES ('admin', 'admin123', 'Administrador Nexus', 'admin')
+    `);
+
+    console.log("Database initialized successfully!");
+  } catch (error) {
+    console.error("Failed to initialize database tables:", error);
+  }
+}
 
 async function startServer() {
+  // Initialize DB Tables
+  await initDb();
+
   const app = express();
   app.use(express.json());
   const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -76,195 +111,256 @@ async function startServer() {
   // --- API Routes ---
 
   // Auth
-  app.post("/api/login", (req, res) => {
+  app.post("/api/login", async (req, res) => {
     const { username, password } = req.body;
-    const user = db.prepare("SELECT id, username, name, role FROM users WHERE username = ? AND password = ?").get(username, password) as any;
-    
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(401).json({ error: "Credenciais inválidas" });
+    try {
+      const [rows] = await pool.query(
+        "SELECT id, username, name, role FROM users WHERE username = ? AND password = ?",
+        [username, password]
+      );
+      const user = (rows as any[])[0];
+      
+      if (user) {
+        res.json(user);
+      } else {
+        res.status(401).json({ error: "Credenciais inválidas" });
+      }
+    } catch (e: any) {
+      res.status(550).json({ error: e.message });
     }
   });
 
   // Users CRUD
-  app.get("/api/users", (req, res) => {
-    const users = db.prepare("SELECT id, username, name, role, created_at FROM users").all();
-    res.json(users);
+  app.get("/api/users", async (req, res) => {
+    try {
+      const [users] = await pool.query("SELECT id, username, name, role, created_at FROM users");
+      res.json(users);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
-  app.post("/api/users", (req, res) => {
+  app.post("/api/users", async (req, res) => {
     const { username, password, name, role } = req.body;
     try {
-      const info = db.prepare(`
+      const [result] = await pool.query(`
         INSERT INTO users (username, password, name, role)
         VALUES (?, ?, ?, ?)
-      `).run(username, password || 'nexus123', name, role || 'client');
-      res.json({ id: info.lastInsertRowid });
+      `, [username, password || 'nexus123', name, role || 'client']);
+      res.json({ id: (result as any).insertId });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  app.put("/api/users/:id", (req, res) => {
+  app.put("/api/users/:id", async (req, res) => {
     const { username, password, name, role } = req.body;
-    if (password) {
-      db.prepare(`
-        UPDATE users SET username = ?, password = ?, name = ?, role = ? WHERE id = ?
-      `).run(username, password, name, role, req.params.id);
-    } else {
-      db.prepare(`
-        UPDATE users SET username = ?, name = ?, role = ? WHERE id = ?
-      `).run(username, name, role, req.params.id);
+    try {
+      if (password) {
+        await pool.query(`
+          UPDATE users SET username = ?, password = ?, name = ?, role = ? WHERE id = ?
+        `, [username, password, name, role, req.params.id]);
+      } else {
+        await pool.query(`
+          UPDATE users SET username = ?, name = ?, role = ? WHERE id = ?
+        `, [username, name, role, req.params.id]);
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
     }
-    res.json({ success: true });
   });
 
-  app.delete("/api/users/:id", (req, res) => {
-    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      await pool.query("DELETE FROM users WHERE id = ?", [req.params.id]);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Integrations CRUD
-  app.get("/api/integrations", (req, res) => {
-    const integrations = db.prepare("SELECT * FROM integrations").all();
-    res.json(integrations);
+  app.get("/api/integrations", async (req, res) => {
+    try {
+      const [integrations] = await pool.query("SELECT * FROM integrations");
+      res.json(integrations);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
-  app.post("/api/integrations", (req, res) => {
+  app.post("/api/integrations", async (req, res) => {
     const { name, origin, destination, port, protocol, access_type, tls_version, observations } = req.body;
-    const info = db.prepare(`
-      INSERT INTO integrations (name, origin, destination, port, protocol, access_type, tls_version, observations)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(name, origin, destination, port, protocol, access_type, tls_version, observations);
-    res.json({ id: info.lastInsertRowid });
+    try {
+      const [result] = await pool.query(`
+        INSERT INTO integrations (name, origin, destination, port, protocol, access_type, tls_version, observations)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [name, origin, destination, port, protocol, access_type, tls_version, observations]);
+      res.json({ id: (result as any).insertId });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
-  app.put("/api/integrations/:id", (req, res) => {
+  app.put("/api/integrations/:id", async (req, res) => {
     const { name, origin, destination, port, protocol, access_type, tls_version, observations } = req.body;
-    db.prepare(`
-      UPDATE integrations 
-      SET name = ?, origin = ?, destination = ?, port = ?, protocol = ?, access_type = ?, tls_version = ?, observations = ?
-      WHERE id = ?
-    `).run(name, origin, destination, port, protocol, access_type, tls_version, observations, req.params.id);
-    res.json({ success: true });
+    try {
+      await pool.query(`
+        UPDATE integrations 
+        SET name = ?, origin = ?, destination = ?, port = ?, protocol = ?, access_type = ?, tls_version = ?, observations = ?
+        WHERE id = ?
+      `, [name, origin, destination, port, protocol, access_type, tls_version, observations, req.params.id]);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
-  app.delete("/api/integrations/:id", (req, res) => {
-    db.prepare("DELETE FROM integrations WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
+  app.delete("/api/integrations/:id", async (req, res) => {
+    try {
+      await pool.query("DELETE FROM integrations WHERE id = ?", [req.params.id]);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Logs
-  app.get("/api/logs", (req, res) => {
-    const logs = db.prepare(`
-      SELECT l.*, i.name as integration_name 
-      FROM logs l 
-      LEFT JOIN integrations i ON l.integration_id = i.id 
-      ORDER BY timestamp DESC LIMIT 100
-    `).all();
-    res.json(logs);
+  app.get("/api/logs", async (req, res) => {
+    try {
+      const [logs] = await pool.query(`
+        SELECT l.*, i.name as integration_name 
+        FROM logs l 
+        LEFT JOIN integrations i ON l.integration_id = i.id 
+        ORDER BY timestamp DESC LIMIT 100
+      `);
+      res.json(logs);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Dashboard Stats
-  app.get("/api/stats", (req, res) => {
+  app.get("/api/stats", async (req, res) => {
     const integrationId = req.query.integrationId;
     const whereClause = integrationId ? "WHERE integration_id = ?" : "";
     const params = integrationId ? [integrationId] : [];
 
-    const volume = db.prepare(`SELECT count(*) as count FROM logs ${whereClause}`).get(...params) as any;
-    const errors = db.prepare(`SELECT count(*) as count FROM logs ${integrationId ? whereClause + " AND" : "WHERE"} status >= 400`).get(...params) as any;
-    const authFailures = db.prepare(`SELECT count(*) as count FROM logs ${integrationId ? whereClause + " AND" : "WHERE"} auth_status = 'failed'`).get(...params) as any;
-    
-    const methods = db.prepare(`SELECT method, count(*) as count FROM logs ${whereClause} GROUP BY method`).all(...params);
-    const timeline = db.prepare(`
-      SELECT strftime('%H:00', timestamp) as hour, count(*) as count 
-      FROM logs 
-      WHERE timestamp > datetime('now', '-24 hours')
-      ${integrationId ? "AND integration_id = ?" : ""}
-      GROUP BY hour
-    `).all(...params);
+    try {
+      const [volumeRows] = await pool.query(`SELECT count(*) as count FROM logs ${whereClause}`, params) as any[];
+      const volume = volumeRows[0] || { count: 0 };
 
-    res.json({
-      summary: {
-        totalVolume: volume.count,
-        errorRate: volume.count > 0 ? ((errors.count / volume.count) * 100).toFixed(1) : 0,
-        authFailures: authFailures.count,
-      },
-      methods,
-      timeline
-    });
+      const errorsWhere = integrationId ? `${whereClause} AND status >= 400` : "WHERE status >= 400";
+      const [errorsRows] = await pool.query(`SELECT count(*) as count FROM logs ${errorsWhere}`, params) as any[];
+      const errors = errorsRows[0] || { count: 0 };
+
+      const authWhere = integrationId ? `${whereClause} AND auth_status = 'failed'` : "WHERE auth_status = 'failed'";
+      const [authRows] = await pool.query(`SELECT count(*) as count FROM logs ${authWhere}`, params) as any[];
+      const authFailures = authRows[0] || { count: 0 };
+      
+      const [methods] = await pool.query(`SELECT method, count(*) as count FROM logs ${whereClause} GROUP BY method`, params);
+      
+      const timelineSql = `
+        SELECT DATE_FORMAT(timestamp, '%H:00') as hour, count(*) as count 
+        FROM logs 
+        WHERE timestamp > NOW() - INTERVAL 24 HOUR
+        ${integrationId ? "AND integration_id = ?" : ""}
+        GROUP BY hour
+      `;
+      const [timeline] = await pool.query(timelineSql, params);
+
+      res.json({
+        summary: {
+          totalVolume: volume.count,
+          errorRate: volume.count > 0 ? ((errors.count / volume.count) * 100).toFixed(1) : 0,
+          authFailures: authFailures.count,
+        },
+        methods,
+        timeline
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Simulation
-  app.post("/api/simulate", (req, res) => {
-    const integrations = db.prepare("SELECT id FROM integrations").all() as any[];
-    if (integrations.length === 0) return res.status(400).json({ error: "Create an integration first" });
+  app.post("/api/simulate", async (req, res) => {
+    try {
+      const [integrations] = await pool.query("SELECT id FROM integrations") as any[];
+      if (integrations.length === 0) return res.status(400).json({ error: "Create an integration first" });
 
-    const ips = ["192.168.1.1", "10.0.0.45", "172.16.0.100", "8.8.8.8", "45.12.33.1"];
-    const geos = ["Brazil", "USA", "Germany", "China", "Unknown"];
-    const methods = ["GET", "POST", "PUT", "DELETE"];
-    const statuses = [200, 201, 400, 401, 403, 500];
-    const auths = ["success", "failed", "none"];
-    const tls = ["TLS 1.2", "TLS 1.3"];
+      const ips = ["192.168.1.1", "10.0.0.45", "172.16.0.100", "8.8.8.8", "45.12.33.1"];
+      const geos = ["Brazil", "USA", "Germany", "China", "Unknown"];
+      const methods = ["GET", "POST", "PUT", "DELETE"];
+      const statuses = [200, 201, 400, 401, 403, 500];
+      const auths = ["success", "failed", "none"];
+      const tls = ["TLS 1.2", "TLS 1.3"];
 
-    const count = 10;
-    const stmt = db.prepare(`
-      INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+      const count = 10;
+      const valuesList: any[] = [];
+      const valuesTemplateList: string[] = [];
 
-    for (let i = 0; i < count; i++) {
+      for (let i = 0; i < count; i++) {
         const intId = integrations[Math.floor(Math.random() * integrations.length)].id;
-        stmt.run(
-            intId,
-            ips[Math.floor(Math.random() * ips.length)],
-            geos[Math.floor(Math.random() * geos.length)],
-            methods[Math.floor(Math.random() * methods.length)],
-            statuses[Math.floor(Math.random() * statuses.length)],
-            auths[Math.floor(Math.random() * auths.length)],
-            tls[Math.floor(Math.random() * tls.length)]
+        valuesTemplateList.push("(?, ?, ?, ?, ?, ?, ?)");
+        valuesList.push(
+          intId,
+          ips[Math.floor(Math.random() * ips.length)],
+          geos[Math.floor(Math.random() * geos.length)],
+          methods[Math.floor(Math.random() * methods.length)],
+          statuses[Math.floor(Math.random() * statuses.length)],
+          auths[Math.floor(Math.random() * auths.length)],
+          tls[Math.floor(Math.random() * tls.length)]
         );
-    }
+      }
 
-    res.json({ success: true, count });
+      await pool.query(`
+        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version)
+        VALUES ${valuesTemplateList.join(", ")}
+      `, valuesList);
+
+      res.json({ success: true, count });
+    } catch (e: any) {
+      res.status(550).json({ error: e.message });
+    }
   });
 
   // --- API Key Management ---
-  app.get("/api/api-keys", (req, res) => {
+  app.get("/api/api-keys", async (req, res) => {
     try {
-      const keys = db.prepare(`
+      const [keys] = await pool.query(`
         SELECT k.*, i.name as integration_name 
         FROM api_keys k
         LEFT JOIN integrations i ON k.integration_id = i.id
         ORDER BY k.created_at DESC
-      `).all();
+      `);
       res.json(keys);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  app.post("/api/api-keys", (req, res) => {
+  app.post("/api/api-keys", async (req, res) => {
     const { name, integration_id } = req.body;
     if (!name || !integration_id) {
       return res.status(400).json({ error: "Nome e integração ID são obrigatórios." });
     }
     try {
       const keyValue = "nexus_key_" + crypto.randomBytes(16).toString("hex");
-      const info = db.prepare(`
+      const [result] = await pool.query(`
         INSERT INTO api_keys (key_value, name, integration_id)
         VALUES (?, ?, ?)
-      `).run(keyValue, name, integration_id);
-      res.json({ id: info.lastInsertRowid, key_value: keyValue, name, integration_id });
+      `, [keyValue, name, integration_id]);
+      res.json({ id: (result as any).insertId, key_value: keyValue, name, integration_id });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  app.delete("/api/api-keys/:id", (req, res) => {
+  app.delete("/api/api-keys/:id", async (req, res) => {
     try {
-      db.prepare("DELETE FROM api_keys WHERE id = ?").run(req.params.id);
+      await pool.query("DELETE FROM api_keys WHERE id = ?", [req.params.id]);
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -279,7 +375,7 @@ async function startServer() {
     });
   });
 
-  app.post("/api/logs/register", (req, res) => {
+  app.post("/api/logs/register", async (req, res) => {
     let apiKey = req.headers["x-api-key"] || req.body.api_key || req.query.api_key;
     
     const authHeader = req.headers["authorization"];
@@ -298,7 +394,8 @@ async function startServer() {
     }
 
     try {
-      const keyRecord = db.prepare("SELECT * FROM api_keys WHERE key_value = ?").get(apiKey) as any;
+      const [keyRows] = await pool.query("SELECT * FROM api_keys WHERE key_value = ?", [apiKey]) as any[];
+      const keyRecord = keyRows[0];
       if (!keyRecord) {
         return res.status(401).json({ error: "Não autorizado: API Key inválida ou inexistente." });
       }
@@ -313,10 +410,10 @@ async function startServer() {
       const finalAuthStatus = auth_status || "success";
       const finalTlsVersion = tls_version || "TLS 1.3";
 
-      const info = db.prepare(`
+      const [result] = await pool.query(`
         INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      `).run(
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+      `, [
         keyRecord.integration_id,
         finalIp,
         finalGeo,
@@ -324,12 +421,12 @@ async function startServer() {
         finalStatus,
         finalAuthStatus,
         finalTlsVersion
-      );
+      ]);
 
       res.status(201).json({
         success: true,
         message: "Log registrado com sucesso!",
-        log_id: info.lastInsertRowid,
+        log_id: (result as any).insertId,
         integration_id: keyRecord.integration_id,
         timestamp: new Date().toISOString()
       });
