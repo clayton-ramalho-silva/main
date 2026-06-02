@@ -284,48 +284,6 @@ async function startServer() {
     }
   });
 
-  // Simulation
-  app.post("/api/simulate", async (req, res) => {
-    try {
-      const [integrations] = await pool.query("SELECT id FROM integrations") as any[];
-      if (integrations.length === 0) return res.status(400).json({ error: "Create an integration first" });
-
-      const ips = ["192.168.1.1", "10.0.0.45", "172.16.0.100", "8.8.8.8", "45.12.33.1"];
-      const geos = ["Brazil", "USA", "Germany", "China", "Unknown"];
-      const methods = ["GET", "POST", "PUT", "DELETE"];
-      const statuses = [200, 201, 400, 401, 403, 500];
-      const auths = ["success", "failed", "none"];
-      const tls = ["TLS 1.2", "TLS 1.3"];
-
-      const count = 10;
-      const valuesList: any[] = [];
-      const valuesTemplateList: string[] = [];
-
-      for (let i = 0; i < count; i++) {
-        const intId = integrations[Math.floor(Math.random() * integrations.length)].id;
-        valuesTemplateList.push("(?, ?, ?, ?, ?, ?, ?)");
-        valuesList.push(
-          intId,
-          ips[Math.floor(Math.random() * ips.length)],
-          geos[Math.floor(Math.random() * geos.length)],
-          methods[Math.floor(Math.random() * methods.length)],
-          statuses[Math.floor(Math.random() * statuses.length)],
-          auths[Math.floor(Math.random() * auths.length)],
-          tls[Math.floor(Math.random() * tls.length)]
-        );
-      }
-
-      await pool.query(`
-        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version)
-        VALUES ${valuesTemplateList.join(", ")}
-      `, valuesList);
-
-      res.json({ success: true, count });
-    } catch (e: any) {
-      res.status(550).json({ error: e.message });
-    }
-  });
-
   // --- API Key Management ---
   app.get("/api/api-keys", async (req, res) => {
     try {

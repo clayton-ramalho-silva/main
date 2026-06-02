@@ -643,7 +643,7 @@ const Integrations = ({ integrations, fetchIntegrations, userRole, isDark }: { i
   );
 };
 
-const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV, isDark }: { logs: Log[], integrations: Integration[], simulateLogs: () => void, exportPDF: (data: Log[]) => void, exportCSV: (data: Log[]) => void, isDark: boolean }) => {
+const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs: Log[], integrations: Integration[], exportPDF: (data: Log[]) => void, exportCSV: (data: Log[]) => void, isDark: boolean }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterIntegration, setFilterIntegration] = useState<number | 'all'>('all');
   const itemsPerPage = 10;
@@ -687,18 +687,6 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV, isD
               <option key={int.id} value={int.id}>{int.name}</option>
             ))}
           </select>
-          <div className={cn("h-6 w-px mx-1 hidden sm:block", isDark ? "bg-zinc-800" : "bg-zinc-200")} />
-          <button 
-            onClick={simulateLogs}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors",
-              isDark 
-                ? "bg-zinc-900 border-zinc-800 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700" 
-                : "bg-white border-zinc-205 text-zinc-800 hover:bg-zinc-100 hover:border-zinc-250"
-            )}
-          >
-            <RefreshCw className="w-4 h-4" /> Simular Fluxo
-          </button>
           <div className={cn("h-6 w-px mx-1 hidden sm:block", isDark ? "bg-zinc-800" : "bg-zinc-200")} />
           <button 
             onClick={() => exportCSV(filteredLogs)}
@@ -787,7 +775,7 @@ const LogsTable = ({ logs, integrations, simulateLogs, exportPDF, exportCSV, isD
               {logs.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-20 text-center text-zinc-500 text-sm">
-                    Nenhum log encontrado. Clique em "Simular Fluxo".
+                    Nenhum log encontrado para exibição.
                   </td>
                 </tr>
               )}
@@ -1851,15 +1839,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [dashboardFilter]);
 
-  const simulateLogs = async () => {
-    try {
-      await axios.post('/api/simulate');
-      fetchData();
-    } catch (e) {
-      alert("Crie uma integração primeiro!");
-    }
-  };
-
   const exportPDF = (dataToExport: Log[]) => {
     const doc = new jsPDF() as any;
     doc.setFontSize(20);
@@ -2005,7 +1984,6 @@ export default function App() {
                     <LogsTable 
                       logs={logs} 
                       integrations={integrations} 
-                      simulateLogs={simulateLogs} 
                       exportPDF={exportPDF} 
                       exportCSV={exportCSV} 
                       isDark={isDark} 
