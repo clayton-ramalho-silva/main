@@ -25,7 +25,8 @@ import {
   UserPlus,
   Key,
   Copy,
-  Check
+  Check,
+  MessageSquare
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -75,6 +76,7 @@ interface Log {
   status: number;
   auth_status: string;
   tls_version: string;
+  message?: string;
   timestamp: string;
 }
 
@@ -646,6 +648,7 @@ const Integrations = ({ integrations, fetchIntegrations, userRole, isDark }: { i
 const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs: Log[], integrations: Integration[], exportPDF: (data: Log[]) => void, exportCSV: (data: Log[]) => void, isDark: boolean }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterIntegration, setFilterIntegration] = useState<number | 'all'>('all');
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const itemsPerPage = 10;
   
   const filteredLogs = filterIntegration === 'all' 
@@ -723,6 +726,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Action</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Info / TLS</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Mensagem do Log / API</th>
               </tr>
             </thead>
             <tbody className={cn("divide-y transition-colors", isDark ? "divide-zinc-800" : "divide-zinc-105")}>
@@ -770,11 +774,28 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                       <span className="text-[9px] text-zinc-500 font-mono">{log.tls_version}</span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-xs font-mono">
+                    {log.message ? (
+                      <button 
+                        onClick={() => setSelectedLog(log)}
+                        className={cn(
+                          "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-mono hover:underline text-left transition-colors",
+                          isDark ? "text-indigo-400 hover:bg-zinc-800" : "text-indigo-600 hover:bg-zinc-100"
+                        )}
+                        title="Ver mensagem completa"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate max-w-[150px]">{log.message}</span>
+                      </button>
+                    ) : (
+                      <span className="text-zinc-500 italic">-</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-zinc-500 text-sm">
+                  <td colSpan={6} className="px-6 py-20 text-center text-zinc-500 text-sm">
                     Nenhum log encontrado para exibição.
                   </td>
                 </tr>
@@ -797,7 +818,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                   "p-2 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed",
                   isDark 
                     ? "border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800" 
-                    : "border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
+                    : "border-zinc-200 text-zinc-650 hover:bg-zinc-100 hover:text-zinc-950"
                 )}
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -843,6 +864,96 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
           </div>
         )}
       </div>
+
+      {/* Detalhes do Log Modal */}
+      <AnimatePresence>
+        {selectedLog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }} 
+              className={cn("w-full max-w-lg rounded-2xl border p-6 space-y-4 relative text-left", isDark ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-zinc-200 text-zinc-900 shadow-xl")}
+            >
+              <button 
+                onClick={() => setSelectedLog(null)} 
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-zinc-800/40 text-zinc-400 hover:text-zinc-250 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-500" />
+                <h3 className="text-lg font-bold">Detalhes do Log</h3>
+              </div>
+
+              <div className="space-y-3 font-sans text-xs">
+                <div className="grid grid-cols-2 gap-2 pb-2 border-b border-zinc-800/60">
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Integração</span>
+                    <span className="font-semibold">{selectedLog.integration_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Data / Hora</span>
+                    <span>{new Date(selectedLog.timestamp).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pb-2 border-b border-zinc-800/60">
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Método</span>
+                    <span className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-700 text-[10px]">{selectedLog.method}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">IP de Origem</span>
+                    <span className="font-mono">{selectedLog.ip}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Localização</span>
+                    <span>{selectedLog.geo}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pb-2 border-b border-zinc-800/60">
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Status Code</span>
+                    <span className={cn(
+                      "font-bold text-sm",
+                      selectedLog.status < 300 ? "text-emerald-500" : selectedLog.status < 500 ? "text-amber-500" : "text-rose-500"
+                    )}>
+                      {selectedLog.status}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Segurança / Proxy</span>
+                    <span>{selectedLog.tls_version} (Auth: {selectedLog.auth_status})</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold mb-1">Mensagem de Retorno / Payload</span>
+                  <div className={cn(
+                    "p-3 rounded-xl border font-mono text-[11px] whitespace-pre-wrap break-all leading-normal max-h-40 overflow-y-auto",
+                    isDark ? "bg-zinc-950 border-zinc-800 text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-800"
+                  )}>
+                    {selectedLog.message || "Nenhuma mensagem adicional retornada."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 text-right">
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -876,6 +987,7 @@ const KeyManagement = ({ isDark, integrations, onLogAdded }: { isDark: boolean, 
   const [testStatus, setTestStatus] = useState("201");
   const [testAuthStatus, setTestAuthStatus] = useState("success");
   const [testTlsVersion, setTestTlsVersion] = useState("TLS 1.3");
+  const [testMessage, setTestMessage] = useState("Transação realizada com sucesso.");
   const [testResult, setTestResult] = useState<any>(null);
   const [testing, setTesting] = useState(false);
 
@@ -947,7 +1059,8 @@ const KeyManagement = ({ isDark, integrations, onLogAdded }: { isDark: boolean, 
         method: testMethod,
         status: parseInt(testStatus),
         auth_status: testAuthStatus,
-        tls_version: testTlsVersion
+        tls_version: testTlsVersion,
+        message: testMessage
       }, {
         headers: {
           "X-API-Key": testKey
@@ -987,7 +1100,8 @@ fetch("${baseUrl}/api/logs/register", {
     method: "POST",
     status: 201,
     auth_status: "success",
-    tls_version: "TLS 1.3"
+    tls_version: "TLS 1.3",
+    message: "Transação financeira concluída com sucesso..."
   })
 })
   .then(res => res.json())
@@ -1005,7 +1119,8 @@ $payload = [
     "method" => "POST",
     "status" => 201,
     "auth_status" => "success",
-    "tls_version" => "TLS 1.3"
+    "tls_version" => "TLS 1.3",
+    "message" => "Transação financeira concluída com sucesso..."
 ];
 
 $ch = curl_init($api_url);
@@ -1212,128 +1327,6 @@ curl_close($ch);
                   {copiedId === 'code' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* 🛠️ Playground Simulador Card (Bypass SSO) */}
-          <div className={cn("p-6 rounded-2xl border space-y-4 text-start font-sans", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-300 shadow-sm")}>
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-500 animate-pulse" />
-              <h4 className={cn("text-sm font-bold", isDark ? "text-white" : "text-zinc-900")}>Simulador Instantâneo (Bypass SSO)</h4>
-            </div>
-
-            <p className={cn("text-xs leading-relaxed", isDark ? "text-zinc-400" : "text-zinc-650")}>
-              Como seu workspace de desenvolvimento requer login do Google, requisições feitas por ferramentas externas como o <strong>Thunder Client</strong> ou servidores de teste recebem o redirecionamento Single Sign-On (Login Page).
-            </p>
-            <p className={cn("text-xs leading-relaxed font-semibold", isDark ? "text-indigo-400" : "text-indigo-600")}>
-              Utilize o formulário abaixo para enviar requisições reais contendo sua API Key diretamente através do navegador autenticado!
-            </p>
-
-            <div className="space-y-4 pt-2 border-t border-zinc-800/40">
-              {/* Key selection */}
-              <div>
-                <label className={cn("text-[10px] font-bold uppercase tracking-wider block mb-1", isDark ? "text-zinc-450" : "text-zinc-550")}>Chave de API do Envio</label>
-                <select
-                  className={cn(
-                    "w-full rounded-lg px-3 py-2 outline-none border text-xs font-mono",
-                    isDark 
-                      ? "bg-zinc-950 border-zinc-850 text-zinc-200" 
-                      : "bg-zinc-50 border-zinc-250 text-zinc-800"
-                  )}
-                  value={testKey}
-                  onChange={e => setTestKey(e.target.value)}
-                >
-                  <option value="">-- Selecione uma chave --</option>
-                  {keys.map(k => (
-                    <option key={k.id} value={k.key_value}>
-                      {k.name} ({k.key_value.substring(0, 10)}...)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Advanced payload inputs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>Região / Cidade</label>
-                  <input
-                    type="text"
-                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
-                    value={testGeo}
-                    onChange={e => setTestGeo(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>IP Externo</label>
-                  <input
-                    type="text"
-                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs font-mono", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
-                    value={testIp}
-                    onChange={e => setTestIp(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>Método</label>
-                  <select
-                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
-                    value={testMethod}
-                    onChange={e => setTestMethod(e.target.value)}
-                  >
-                    <option value="POST">POST</option>
-                    <option value="GET">GET</option>
-                    <option value="PUT">PUT</option>
-                    <option value="DELETE">DELETE</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={cn("text-[10px] font-bold uppercase block mb-1", isDark ? "text-zinc-455" : "text-zinc-500")}>Código Log</label>
-                  <select
-                    className={cn("w-full rounded-lg px-3 py-1.5 border text-xs", isDark ? "bg-zinc-950 border-zinc-800 text-zinc-350" : "bg-zinc-50 border-zinc-200 text-zinc-800")}
-                    value={testStatus}
-                    onChange={e => setTestStatus(e.target.value)}
-                  >
-                    <option value="201">201 (Created)</option>
-                    <option value="200">200 (OK)</option>
-                    <option value="400">400 (Bad Request)</option>
-                    <option value="401">401 (Unauthorized)</option>
-                    <option value="403">403 (Forbidden)</option>
-                    <option value="500">500 (Server Error)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Instant Sim Action button */}
-              <button
-                onClick={handleTestSend}
-                disabled={testing || !testKey}
-                className={cn(
-                  "w-full text-xs font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm",
-                  isDark
-                    ? "bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-zinc-800 disabled:text-zinc-650"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
-                )}
-              >
-                {testing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                {testing ? "Executando Requisição..." : "Testar e Gravar Log no Banco"}
-              </button>
-
-              {/* Simulation Result display */}
-              {testResult && (
-                <div className="space-y-1.5 pt-2 border-t border-zinc-800/40">
-                  <span className={cn("text-[9px] font-bold uppercase block", isDark ? "text-zinc-500" : "text-zinc-600")}>Resposta do Servidor:</span>
-                  {testResult.success ? (
-                    <div className={cn("p-3 rounded-xl border font-mono text-[10px] space-y-1 select-all leading-normal", isDark ? "bg-emerald-950/20 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-800")}>
-                      <span className="font-bold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> STATUS: {testResult.status}</span>
-                      <pre className="overflow-x-auto font-mono mt-1 whitespace-pre">{JSON.stringify(testResult.data, null, 2)}</pre>
-                    </div>
-                  ) : (
-                    <div className={cn("p-3 rounded-xl border font-mono text-[10px] space-y-1 select-all leading-normal", isDark ? "bg-rose-950/20 border-rose-500/10 text-rose-450" : "bg-rose-50 border-rose-250 text-rose-805")}>
-                      <span className="font-bold flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> STATUS: {testResult.status}</span>
-                      <pre className="overflow-x-auto font-mono mt-1 whitespace-pre">{JSON.stringify(testResult.data, null, 2)}</pre>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 

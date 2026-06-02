@@ -51,10 +51,17 @@ async function initDb() {
         status INT,
         auth_status VARCHAR(50),
         tls_version VARCHAR(50),
+        message TEXT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(integration_id) REFERENCES integrations(id) ON DELETE CASCADE
       )
     `);
+
+    try {
+      await pool.query("ALTER TABLE logs ADD COLUMN message TEXT");
+    } catch (err) {
+      // Ignora erro se coluna já existir
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS api_keys (
@@ -358,7 +365,7 @@ async function startServer() {
         return res.status(401).json({ error: "Não autorizado: API Key inválida ou inexistente." });
       }
 
-      const { ip, geo, method, status, auth_status, tls_version } = req.body;
+      const { ip, geo, method, status, auth_status, tls_version, message } = req.body;
 
       // Sensible defaults if not specified
       const finalIp = ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
@@ -367,10 +374,11 @@ async function startServer() {
       const finalStatus = status !== undefined ? parseInt(status) : 200;
       const finalAuthStatus = auth_status || "success";
       const finalTlsVersion = tls_version || "TLS 1.3";
+      const finalMessage = message !== undefined ? String(message) : null;
 
       const [result] = await pool.query(`
-        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version, message, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `, [
         keyRecord.integration_id,
         finalIp,
@@ -378,7 +386,8 @@ async function startServer() {
         finalMethod,
         finalStatus,
         finalAuthStatus,
-        finalTlsVersion
+        finalTlsVersion,
+        finalMessage
       ]);
 
       res.status(201).json({
