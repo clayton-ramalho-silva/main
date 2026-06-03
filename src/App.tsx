@@ -672,6 +672,8 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
   const [searchMethod, setSearchMethod] = useState("all");
   const [searchStatus, setSearchStatus] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
+  const [searchStartDate, setSearchStartDate] = useState("");
+  const [searchEndDate, setSearchEndDate] = useState("");
   const itemsPerPage = 10;
   
   const selectedIntObj = filterIntegration === 'all' 
@@ -700,6 +702,19 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
     if (searchMessage && (!l.message || !l.message.toLowerCase().includes(searchMessage.toLowerCase()))) {
       return false;
     }
+    // Date range filter
+    if (searchStartDate || searchEndDate) {
+      try {
+        const logDateStr = new Date(l.timestamp).toISOString().substring(0, 10);
+        if (searchStartDate && logDateStr < searchStartDate) return false;
+        if (searchEndDate && logDateStr > searchEndDate) return false;
+      } catch (e) {
+        // Fallback for custom formatted dates
+        const logTime = new Date(l.timestamp).getTime();
+        if (searchStartDate && logTime < new Date(searchStartDate + "T00:00:00").getTime()) return false;
+        if (searchEndDate && logTime > new Date(searchEndDate + "T23:59:59").getTime()) return false;
+      }
+    }
     return true;
   });
 
@@ -713,7 +728,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterIntegration, searchIP, searchMethod, searchStatus, searchMessage]);
+  }, [filterIntegration, searchIP, searchMethod, searchStatus, searchMessage, searchStartDate, searchEndDate]);
 
   return (
     <div className="space-y-6">
@@ -774,7 +789,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
           <span>Filtros:</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 flex-grow">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 flex-grow">
           {/* IP / Localização Input */}
           <div className="relative">
             <input
@@ -842,15 +857,55 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
               )}
             />
           </div>
+
+          {/* Data Inicial */}
+          <div className="relative flex items-center">
+            <span className={cn(
+              "absolute left-3 text-[10px] font-bold uppercase tracking-wider select-none",
+              isDark ? "text-zinc-500" : "text-zinc-400"
+            )}>De:</span>
+            <input
+              type="date"
+              value={searchStartDate}
+              onChange={(e) => setSearchStartDate(e.target.value)}
+              className={cn(
+                "w-full rounded-xl pl-9 pr-3 py-2 border text-xs focus:outline-none transition-colors",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-300 focus:border-zinc-700 [color-scheme:dark]" 
+                  : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300 [color-scheme:light]"
+              )}
+            />
+          </div>
+
+          {/* Data Final */}
+          <div className="relative flex items-center">
+            <span className={cn(
+              "absolute left-3 text-[10px] font-bold uppercase tracking-wider select-none",
+              isDark ? "text-zinc-500" : "text-zinc-400"
+            )}>Até:</span>
+            <input
+              type="date"
+              value={searchEndDate}
+              onChange={(e) => setSearchEndDate(e.target.value)}
+              className={cn(
+                "w-full rounded-xl pl-9 pr-3 py-2 border text-xs focus:outline-none transition-colors",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-300 focus:border-zinc-700 [color-scheme:dark]" 
+                  : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300 [color-scheme:light]"
+              )}
+            />
+          </div>
         </div>
 
-        {(searchIP || searchMethod !== 'all' || searchStatus || searchMessage) && (
+        {(searchIP || searchMethod !== 'all' || searchStatus || searchMessage || searchStartDate || searchEndDate) && (
           <button
             onClick={() => {
               setSearchIP("");
               setSearchMethod("all");
               setSearchStatus("");
               setSearchMessage("");
+              setSearchStartDate("");
+              setSearchEndDate("");
             }}
             className={cn(
               "px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm",
@@ -1989,6 +2044,9 @@ export default function App() {
     doc.text('Nexus API - Relatorio de Compliance', 15, 20);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleString()}`, 15, 28);
+    if (integrationName) {
+      doc.text(`Integração: ${integrationName}`, 15, 34);
+    }
     
     const tableData = dataToExport.map(l => [
       new Date(l.timestamp).toLocaleString(),
@@ -2003,7 +2061,7 @@ export default function App() {
     autoTable(doc, {
       head: [['Timestamp', 'Serviço', 'IP', 'Metodo', 'Status', 'Auth', 'TLS']],
       body: tableData,
-      startY: 35,
+      startY: integrationName ? 40 : 35,
       theme: 'grid',
       headStyles: { fillColor: [59, 130, 246] }
     });
