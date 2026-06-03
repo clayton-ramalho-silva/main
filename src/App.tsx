@@ -26,7 +26,8 @@ import {
   Key,
   Copy,
   Check,
-  MessageSquare
+  MessageSquare,
+  Filter
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -658,11 +659,35 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
   const [currentPage, setCurrentPage] = useState(1);
   const [filterIntegration, setFilterIntegration] = useState<number | 'all'>('all');
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
+  const [searchIP, setSearchIP] = useState("");
+  const [searchMethod, setSearchMethod] = useState("all");
+  const [searchStatus, setSearchStatus] = useState("");
+  const [searchMessage, setSearchMessage] = useState("");
   const itemsPerPage = 10;
   
-  const filteredLogs = filterIntegration === 'all' 
-    ? logs 
-    : logs.filter(l => l.integration_id === filterIntegration);
+  const filteredLogs = logs.filter(l => {
+    // Service/Integration filter
+    if (filterIntegration !== 'all' && l.integration_id !== filterIntegration) {
+      return false;
+    }
+    // IP / Geo filter
+    if (searchIP && !l.ip.toLowerCase().includes(searchIP.toLowerCase()) && !l.geo.toLowerCase().includes(searchIP.toLowerCase())) {
+      return false;
+    }
+    // Method filter
+    if (searchMethod !== 'all' && l.method.toLowerCase() !== searchMethod.toLowerCase()) {
+      return false;
+    }
+    // Status filter
+    if (searchStatus && !String(l.status).includes(searchStatus)) {
+      return false;
+    }
+    // Message filter
+    if (searchMessage && (!l.message || !l.message.toLowerCase().includes(searchMessage.toLowerCase()))) {
+      return false;
+    }
+    return true;
+  });
 
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -674,7 +699,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterIntegration]);
+  }, [filterIntegration, searchIP, searchMethod, searchStatus, searchMessage]);
 
   return (
     <div className="space-y-6">
@@ -723,6 +748,108 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
             <FileText className="w-4 h-4" /> PDF
           </button>
         </div>
+      </div>
+
+      {/* 🔍 Filtros de Coluna */}
+      <div className={cn(
+        "p-4 rounded-2xl border flex flex-col md:flex-row gap-3 items-stretch md:items-center text-xs transition-colors",
+        isDark ? "bg-zinc-900/60 border-zinc-850" : "bg-zinc-50 border-zinc-200"
+      )}>
+        <div className="flex items-center gap-2 text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">
+          <Filter className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+          <span>Filtros:</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 flex-grow">
+          {/* IP / Localização Input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="IP / Localização..."
+              value={searchIP}
+              onChange={(e) => setSearchIP(e.target.value)}
+              className={cn(
+                "w-full rounded-xl px-3 py-2 border text-xs focus:outline-none transition-colors",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-300 focus:border-zinc-700 placeholder-zinc-600" 
+                  : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300 placeholder-zinc-400"
+              )}
+            />
+          </div>
+
+          {/* Método Select */}
+          <div>
+            <select
+              value={searchMethod}
+              onChange={(e) => setSearchMethod(e.target.value)}
+              className={cn(
+                "w-full rounded-xl px-3 py-2 border text-xs focus:outline-none transition-colors appearance-none cursor-pointer",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-300 focus:border-zinc-700" 
+                  : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300"
+              )}
+            >
+              <option value="all">MÉTODO (Todos)</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+          </div>
+
+          {/* Status Code Input */}
+          <div>
+            <input
+              type="text"
+              placeholder="Status (ex: 200, 401)..."
+              value={searchStatus}
+              onChange={(e) => setSearchStatus(e.target.value)}
+              className={cn(
+                "w-full rounded-xl px-3 py-2 border text-xs focus:outline-none transition-colors",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-300 focus:border-zinc-700 placeholder-zinc-600" 
+                  : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300 placeholder-zinc-400"
+              )}
+            />
+          </div>
+
+          {/* Mensagem Input */}
+          <div>
+            <input
+              type="text"
+              placeholder="Mensagem do log..."
+              value={searchMessage}
+              onChange={(e) => setSearchMessage(e.target.value)}
+              className={cn(
+                "w-full rounded-xl px-3 py-2 border text-xs focus:outline-none transition-colors",
+                isDark 
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-300 focus:border-zinc-700 placeholder-zinc-600" 
+                  : "bg-white border-zinc-200 text-zinc-800 focus:border-zinc-300 placeholder-zinc-400"
+              )}
+            />
+          </div>
+        </div>
+
+        {(searchIP || searchMethod !== 'all' || searchStatus || searchMessage) && (
+          <button
+            onClick={() => {
+              setSearchIP("");
+              setSearchMethod("all");
+              setSearchStatus("");
+              setSearchMessage("");
+            }}
+            className={cn(
+              "px-3 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm",
+              isDark 
+                ? "border-zinc-805 bg-zinc-950 text-rose-400 hover:text-rose-300 hover:bg-zinc-900" 
+                : "border-zinc-200 bg-white text-rose-600 hover:bg-rose-50"
+            )}
+            title="Limpar Filtros"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Limpar</span>
+          </button>
+        )}
       </div>
 
       <div className={cn("overflow-hidden border rounded-2xl transition-colors", isDark ? "bg-zinc-900 border-zinc-850" : "bg-white border-zinc-200 shadow-sm")}>
