@@ -80,6 +80,15 @@ interface Log {
   timestamp: string;
 }
 
+const fixUtf8 = (str: string | undefined | null): string => {
+  if (!str) return "";
+  try {
+    return decodeURIComponent(escape(str));
+  } catch (e) {
+    return str;
+  }
+};
+
 interface Stats {
   summary: {
     totalVolume: number;
@@ -785,7 +794,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                         title="Ver mensagem completa"
                       >
                         <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="truncate max-w-[150px]">{log.message}</span>
+                        <span className="truncate max-w-[150px]">{fixUtf8(log.message)}</span>
                       </button>
                     ) : (
                       <span className="text-zinc-500 italic">-</span>
@@ -900,19 +909,20 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pb-2 border-b border-zinc-800/60">
+                <div className="grid grid-cols-2 gap-2 pb-2 border-b border-zinc-800/60">
                   <div>
                     <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Método</span>
                     <span className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-700 text-[10px]">{selectedLog.method}</span>
                   </div>
                   <div>
                     <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">IP de Origem</span>
-                    <span className="font-mono">{selectedLog.ip}</span>
+                    <span className="font-mono break-all">{selectedLog.ip}</span>
                   </div>
-                  <div>
-                    <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Localização</span>
-                    <span>{selectedLog.geo}</span>
-                  </div>
+                </div>
+
+                <div className="pb-2 border-b border-zinc-800/60">
+                  <span className="text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">Localização</span>
+                  <span>{selectedLog.geo}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pb-2 border-b border-zinc-800/60">
@@ -937,7 +947,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                     "p-3 rounded-xl border font-mono text-[11px] whitespace-pre-wrap break-all leading-normal max-h-40 overflow-y-auto",
                     isDark ? "bg-zinc-950 border-zinc-800 text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-800"
                   )}>
-                    {selectedLog.message || "Nenhuma mensagem adicional retornada."}
+                    {selectedLog.message ? fixUtf8(selectedLog.message) : "Nenhuma mensagem adicional retornada."}
                   </div>
                 </div>
               </div>
