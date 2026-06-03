@@ -90,6 +90,15 @@ const fixUtf8 = (str: string | undefined | null): string => {
   }
 };
 
+const cleanName = (name: string): string => {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-");
+};
+
 interface Stats {
   summary: {
     totalVolume: number;
@@ -655,7 +664,7 @@ const Integrations = ({ integrations, fetchIntegrations, userRole, isDark }: { i
   );
 };
 
-const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs: Log[], integrations: Integration[], exportPDF: (data: Log[]) => void, exportCSV: (data: Log[]) => void, isDark: boolean }) => {
+const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs: Log[], integrations: Integration[], exportPDF: (data: Log[], integrationName?: string) => void, exportCSV: (data: Log[], integrationName?: string) => void, isDark: boolean }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterIntegration, setFilterIntegration] = useState<number | 'all'>('all');
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
@@ -664,6 +673,11 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
   const [searchStatus, setSearchStatus] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
   const itemsPerPage = 10;
+  
+  const selectedIntObj = filterIntegration === 'all' 
+    ? undefined 
+    : integrations.find(i => i.id === filterIntegration);
+  const selectedIntName = selectedIntObj?.name;
   
   const filteredLogs = logs.filter(l => {
     // Service/Integration filter
@@ -726,7 +740,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
           </select>
           <div className={cn("h-6 w-px mx-1 hidden sm:block", isDark ? "bg-zinc-800" : "bg-zinc-200")} />
           <button 
-            onClick={() => exportCSV(filteredLogs)}
+            onClick={() => exportCSV(filteredLogs, selectedIntName)}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors",
               isDark 
@@ -737,7 +751,7 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
             <Download className="w-4 h-4" /> CSV
           </button>
           <button 
-            onClick={() => exportPDF(filteredLogs)}
+            onClick={() => exportPDF(filteredLogs, selectedIntName)}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors",
               isDark 
@@ -1969,7 +1983,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [dashboardFilter]);
 
-  const exportPDF = (dataToExport: Log[]) => {
+  const exportPDF = (dataToExport: Log[], integrationName?: string) => {
     const doc = new jsPDF() as any;
     doc.setFontSize(20);
     doc.text('Nexus API - Relatorio de Compliance', 15, 20);
@@ -1994,15 +2008,32 @@ export default function App() {
       headStyles: { fillColor: [59, 130, 246] }
     });
 
-    doc.save('compliance-report.pdf');
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const slug = integrationName ? `-${cleanName(integrationName)}` : '';
+    const filename = `compliance-report${slug}-${dateStr}.pdf`;
+
+    doc.save(filename);
   };
 
-  const exportCSV = (dataToExport: Log[]) => {
+  const exportCSV = (dataToExport: Log[], integrationName?: string) => {
     const csvData = Papa.unparse(dataToExport);
     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'nexus-logs.csv');
+    
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const slug = integrationName ? `-${cleanName(integrationName)}` : '';
+    const filename = `nexus-logs${slug}-${dateStr}.csv`;
+
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
