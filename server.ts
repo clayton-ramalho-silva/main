@@ -99,7 +99,7 @@ async function initDb() {
     // Insert default admin if not exists
     await pool.query(`
       INSERT IGNORE INTO users (username, password, name, role) 
-      VALUES ('admin', 'admin123', 'Administrador Nexus', 'admin')
+      VALUES ('admin', 'admin123', 'Administrador Orthanc', 'admin')
     `);
 
     console.log("Database initialized successfully!");
@@ -420,7 +420,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Nexus Server running on http://localhost:${PORT}`);
+    console.log(`Orthanc Server running on http://localhost:${PORT}`);
   });
 }
 

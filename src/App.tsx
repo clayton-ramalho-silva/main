@@ -156,7 +156,7 @@ const Navbar = ({ toggleDarkMode, isDark, toggleSidebar, user, onLogout }: any) 
           <Zap className="w-4 h-4" />
         </div>
         <h1 className="text-lg font-semibold tracking-tight">
-          Nexus <span className={isDark ? "text-zinc-400 font-normal" : "text-zinc-500 font-normal"}>API</span>
+          Orthanc <span className={isDark ? "text-zinc-400 font-normal" : "text-zinc-500 font-normal"}>API</span>
         </h1>
       </div>
     </div>
@@ -1298,7 +1298,7 @@ fetch("${baseUrl}/api/logs/register", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "X-API-Key": "${keys[0]?.key_value || 'nexus_key_sua_chave_aqui'}"
+    "X-API-Key": "${keys[0]?.key_value || 'orthanc_key_sua_chave_aqui'}"
   },
   body: JSON.stringify({
     ip: "186.230.12.98",
@@ -1317,7 +1317,7 @@ fetch("${baseUrl}/api/logs/register", {
   const codePhp = `<?php
 // Exemplo de integração em PHP (cURL)
 $api_url = "${baseUrl}/api/logs/register";
-$api_key = "${keys[0]?.key_value || 'nexus_key_sua_chave_aqui'}";
+$api_key = "${keys[0]?.key_value || 'orthanc_key_sua_chave_aqui'}";
 
 $payload = [
     "ip" => "186.230.12.98",
@@ -1920,7 +1920,7 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
           )}>
             <Zap className="w-6 h-6" />
           </div>
-          <h1 className={cn("text-2xl font-bold tracking-tight font-sans transition-colors duration-200", isDark ? "text-white" : "text-zinc-900")}>Nexus <span className="text-zinc-400 font-medium font-mono text-xl">API</span></h1>
+          <h1 className={cn("text-2xl font-bold tracking-tight font-sans transition-colors duration-200", isDark ? "text-white" : "text-zinc-900")}>Orthanc <span className="text-zinc-400 font-medium font-mono text-xl">API</span></h1>
           <p className={cn("text-xs mt-1 transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>Painel Central de Infraestrutura</p>
         </div>
 
@@ -1993,7 +1993,7 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
 
 export default function App() {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('nexus_user');
+    const saved = localStorage.getItem('orthanc_user');
     return saved ? JSON.parse(saved) : null;
   });
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -2002,12 +2002,12 @@ export default function App() {
   
   const handleLogin = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('nexus_user', JSON.stringify(userData));
+    localStorage.setItem('orthanc_user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('nexus_user');
+    localStorage.removeItem('orthanc_user');
   };
 
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -2041,7 +2041,7 @@ export default function App() {
   const exportPDF = (dataToExport: Log[], integrationName?: string) => {
     const doc = new jsPDF() as any;
     doc.setFontSize(20);
-    doc.text('Nexus API - Relatorio de Compliance', 15, 20);
+    doc.text('Orthanc API - Relatorio de Compliance', 15, 20);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleString()}`, 15, 28);
     if (integrationName) {
@@ -2089,7 +2089,7 @@ export default function App() {
     const day = String(d.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     const slug = integrationName ? `-${cleanName(integrationName)}` : '';
-    const filename = `nexus-logs${slug}-${dateStr}.csv`;
+    const filename = `orthanc-logs${slug}-${dateStr}.csv`;
 
     link.setAttribute('download', filename);
     document.body.appendChild(link);
