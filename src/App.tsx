@@ -1751,7 +1751,7 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
             </div>
             <div>
               <h3 className={cn("text-lg font-bold", isDark ? "text-white" : "text-zinc-900")}>{u.name}</h3>
-              <p className={cn("text-sm italic", isDark ? "text-zinc-500" : "text-zinc-400")}>@{u.username}</p>
+              <p className={cn("text-sm font-mono truncate mt-0.5", isDark ? "text-zinc-400" : "text-zinc-500")}>{u.username}</p>
             </div>
             <div className="flex items-center justify-between w-full mt-2">
               <span className={cn(
@@ -1797,7 +1797,7 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-405 uppercase mb-1 block">Usuário (Login)</label>
+                  <label className="text-xs font-bold text-zinc-405 uppercase mb-1 block">E-mail (Login)</label>
                   <input 
                     required 
                     className={cn(
@@ -1806,6 +1806,7 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
                         ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
                         : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
                     )}
+                    placeholder="exemplo@dominio.com"
                     value={formData.username} 
                     onChange={e => setFormData({...formData, username: e.target.value})} 
                     disabled={editingUser?.username === 'admin'} 
@@ -1926,7 +1927,7 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className={cn("text-[10px] font-bold uppercase tracking-widest block transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>Usuário</label>
+            <label className={cn("text-[10px] font-bold uppercase tracking-widest block transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>E-mail</label>
             <input 
               required 
               className={cn(
@@ -1935,7 +1936,7 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
                   ? "bg-zinc-950 border-zinc-900 text-white placeholder-zinc-800 focus:border-zinc-700" 
                   : "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400"
               )}
-              placeholder="admin / client" 
+              placeholder="exemplo@dominio.com / admin" 
               value={username} 
               onChange={e => setUsername(e.target.value)} 
             />
