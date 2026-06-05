@@ -7,6 +7,23 @@ import crypto from "crypto";
 
 dotenv.config();
 
+// Helper functions to hash and verify passwords using PBKDF2
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+  if (!storedHash.includes(":")) {
+    // Backward compatibility with legacy plain text passwords
+    return password === storedHash;
+  }
+  const [salt, hash] = storedHash.split(":");
+  const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return hash === verifyHash;
+}
+
 // MySQL connection settings from environment or fallback
 const dbConfig = {
   host: process.env.DB_HOST || "193.203.175.153",
@@ -97,10 +114,14 @@ async function initDb() {
     `);
 
     // Insert default admin if not exists
-    await pool.query(`
-      INSERT IGNORE INTO users (username, password, name, role) 
-      VALUES ('admin', 'admin123', 'Administrador Orthanc', 'admin')
-    `);
+    const [existingUsers] = await pool.query("SELECT id FROM users WHERE username = ?", ["admin"]);
+    if ((existingUsers as any[]).length === 0) {
+      const hashedAdminPassword = hashPassword("admin123");
+      await pool.query(`
+        INSERT INTO users (username, password, name, role) 
+        VALUES ('admin', ?, 'Administrador Orthanc', 'admin')
+      `, [hashedAdminPassword]);
+    }
 
     console.log("Database initialized successfully!");
   } catch (error) {
@@ -123,13 +144,14 @@ async function startServer() {
     const { username, password } = req.body;
     try {
       const [rows] = await pool.query(
-        "SELECT id, username, name, role FROM users WHERE username = ? AND password = ?",
-        [username, password]
+        "SELECT id, username, password, name, role FROM users WHERE username = ?",
+        [username]
       );
       const user = (rows as any[])[0];
       
-      if (user) {
-        res.json(user);
+      if (user && verifyPassword(password, user.password)) {
+        const { password: _, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
       } else {
         res.status(401).json({ error: "Credenciais inválidas" });
       }
@@ -144,17 +166,18 @@ async function startServer() {
       const [users] = await pool.query("SELECT id, username, name, role, created_at FROM users");
       res.json(users);
     } catch (e: any) {
-      res.status(500).json({ error: e.message });
+      res.status(550).json({ error: e.message });
     }
   });
 
   app.post("/api/users", async (req, res) => {
     const { username, password, name, role } = req.body;
     try {
+      const hashedPassword = hashPassword(password || 'orthanc123');
       const [result] = await pool.query(`
         INSERT INTO users (username, password, name, role)
         VALUES (?, ?, ?, ?)
-      `, [username, password || 'nexus123', name, role || 'client']);
+      `, [username, hashedPassword, name, role || 'client']);
       res.json({ id: (result as any).insertId });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
@@ -165,9 +188,10 @@ async function startServer() {
     const { username, password, name, role } = req.body;
     try {
       if (password) {
+        const hashedPassword = hashPassword(password);
         await pool.query(`
           UPDATE users SET username = ?, password = ?, name = ?, role = ? WHERE id = ?
-        `, [username, password, name, role, req.params.id]);
+        `, [username, hashedPassword, name, role, req.params.id]);
       } else {
         await pool.query(`
           UPDATE users SET username = ?, name = ?, role = ? WHERE id = ?
