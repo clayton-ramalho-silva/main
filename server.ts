@@ -113,6 +113,32 @@ async function initDb() {
       )
     `);
 
+    // Create country_blacklist table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS country_blacklist (
+        country_code VARCHAR(10) PRIMARY KEY,
+        country_name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Add is_suspicious column database migration just in case
+    try {
+      await pool.query("ALTER TABLE logs ADD COLUMN is_suspicious TINYINT DEFAULT 0");
+    } catch (err) {
+      // column already exists, safe to ignore
+    }
+
+    // Seed default blacklisted countries if empty
+    const [blacklistCount] = await pool.query("SELECT COUNT(*) as count FROM country_blacklist") as any[];
+    if (blacklistCount[0] && blacklistCount[0].count === 0) {
+      await pool.query(`
+        INSERT INTO country_blacklist (country_code, country_name) VALUES 
+        ('RU', 'Rússia'),
+        ('KP', 'Coreia do Norte')
+      `);
+    }
+
     // Insert default admin if not exists
     const [existingUsers] = await pool.query("SELECT id FROM users WHERE username = ?", ["admin"]);
     if ((existingUsers as any[]).length === 0) {
@@ -206,6 +232,42 @@ async function startServer() {
   app.delete("/api/users/:id", async (req, res) => {
     try {
       await pool.query("DELETE FROM users WHERE id = ?", [req.params.id]);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Country Blacklist CRUD
+  app.get("/api/blacklist", async (req, res) => {
+    try {
+      const [countries] = await pool.query("SELECT country_code, country_name, created_at FROM country_blacklist ORDER BY country_name ASC");
+      res.json(countries);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/blacklist", async (req, res) => {
+    const { country_code, country_name } = req.body;
+    if (!country_code || !country_name) {
+      return res.status(400).json({ error: "Código e nome do país são obrigatórios." });
+    }
+    try {
+      await pool.query(`
+        INSERT INTO country_blacklist (country_code, country_name)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE country_name = VALUES(country_name)
+      `, [country_code.toUpperCase(), country_name]);
+      res.json({ success: true, country_code: country_code.toUpperCase(), country_name });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.delete("/api/blacklist/:country_code", async (req, res) => {
+    try {
+      await pool.query("DELETE FROM country_blacklist WHERE country_code = ?", [req.params.country_code.toUpperCase()]);
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -401,18 +463,50 @@ async function startServer() {
       const finalTlsVersion = tls_version || "TLS 1.3";
       const finalMessage = message !== undefined ? String(message) : null;
 
+      // Check against country blacklist
+      const [blacklistRows] = await pool.query("SELECT country_code, country_name FROM country_blacklist") as any[];
+      let isSuspicious = 0;
+      let matchedCountryName = "";
+      
+      const geoLower = finalGeo.toLowerCase();
+      for (const item of blacklistRows) {
+        const codeLower = item.country_code.toLowerCase();
+        const nameLower = item.country_name.toLowerCase();
+        
+        // Match code or name
+        if (
+          geoLower.includes(codeLower) ||
+          geoLower.includes(nameLower)
+        ) {
+          isSuspicious = 1;
+          matchedCountryName = item.country_name;
+          break;
+        }
+      }
+
+      let adjustedMessage = finalMessage;
+      let adjustedAuthStatus = finalAuthStatus;
+      let adjustedStatus = finalStatus;
+
+      if (isSuspicious) {
+        adjustedMessage = `[ALERTA BLACKLIST - PAÍS: ${matchedCountryName}] ${finalMessage || "Tentativa de acesso via API Key bloqueada temporariamente"}`;
+        adjustedAuthStatus = "blocked";
+        adjustedStatus = 403;
+      }
+
       const [result] = await pool.query(`
-        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version, message, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO logs (integration_id, ip, geo, method, status, auth_status, tls_version, message, is_suspicious, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `, [
         keyRecord.integration_id,
         finalIp,
         finalGeo,
         finalMethod,
-        finalStatus,
-        finalAuthStatus,
+        adjustedStatus,
+        adjustedAuthStatus,
         finalTlsVersion,
-        finalMessage
+        adjustedMessage,
+        isSuspicious
       ]);
 
       res.status(201).json({

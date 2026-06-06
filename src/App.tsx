@@ -47,6 +47,7 @@ import Papa from 'papaparse';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import SecurityPanel from './components/SecurityPanel';
 
 // --- Utility ---
 function cn(...inputs: ClassValue[]) {
@@ -2148,6 +2149,12 @@ export default function App() {
             active={activeTab === 'logs'} 
             onClick={() => setActiveTab('logs')} 
           />
+          <SidebarItem 
+            icon={ShieldCheck} 
+            label={sidebarOpen ? "Segurança" : ""} 
+            active={activeTab === 'security'} 
+            onClick={() => setActiveTab('security')} 
+          />
 
           {user.role === 'admin' && (
             <SidebarItem 
@@ -2207,6 +2214,12 @@ export default function App() {
                       exportPDF={exportPDF} 
                       exportCSV={exportCSV} 
                       isDark={isDark} 
+                    />
+                  )}
+                  {activeTab === 'security' && (
+                    <SecurityPanel 
+                      isDark={isDark} 
+                      logs={logs} 
                     />
                   )}
                   {activeTab === 'users' && user.role === 'admin' && (
