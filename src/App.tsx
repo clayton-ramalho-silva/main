@@ -27,7 +27,9 @@ import {
   Copy,
   Check,
   MessageSquare,
-  Filter
+  Filter,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -1662,6 +1664,7 @@ curl_close($ch);
 const UserManagement = ({ isDark }: { isDark: boolean }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     username: '',
@@ -1680,6 +1683,7 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
   }, []);
 
   useEffect(() => {
+    setShowPassword(false);
     if (editingUser) {
       setFormData({
         username: editingUser.username,
@@ -1815,20 +1819,30 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
                     disabled={editingUser?.username === 'admin'} 
                   />
                 </div>
-                <div>
+                 <div>
                   <label className="text-xs font-bold text-zinc-405 uppercase mb-1 block">Senha {editingUser && '(deixe em branco para não alterar)'}</label>
-                  <input 
-                    type="password" 
-                    required={!editingUser} 
-                    className={cn(
-                      "w-full rounded-xl px-4 py-2.5 outline-none focus:ring-1 transition-all border",
-                      isDark 
-                        ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
-                        : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
-                    )}
-                    value={formData.password} 
-                    onChange={e => setFormData({...formData, password: e.target.value})} 
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      required={!editingUser} 
+                      className={cn(
+                        "w-full rounded-xl pl-4 pr-11 py-2.5 outline-none focus:ring-1 transition-all border",
+                        isDark 
+                          ? "bg-zinc-800 border-zinc-700 text-zinc-200 focus:ring-zinc-650 focus:border-zinc-650" 
+                          : "bg-zinc-50 border-zinc-205 text-zinc-800 focus:ring-zinc-300 focus:border-zinc-350"
+                      )}
+                      value={formData.password} 
+                      onChange={e => setFormData({...formData, password: e.target.value})} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                      title={showPassword ? "Ocultar senha" : "Exibir senha"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-450 uppercase mb-1 block">Papel (Role)</label>
@@ -1868,6 +1882,7 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
 const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (user: User) => void, isDark: boolean, toggleDarkMode: () => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -1946,19 +1961,29 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
           </div>
           <div className="space-y-1.5">
             <label className={cn("text-[10px] font-bold uppercase tracking-widest block transition-colors duration-200", isDark ? "text-zinc-500" : "text-zinc-600")}>Senha</label>
-            <input 
-              type="password" 
-              required 
-              className={cn(
-                "w-full rounded-xl px-4 py-3 outline-none transition-colors duration-200 text-sm font-mono border",
-                isDark 
-                  ? "bg-zinc-950 border-zinc-900 text-white placeholder-zinc-800 focus:border-zinc-700" 
-                  : "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400"
-              )}
-              placeholder="••••••••" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-            />
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                className={cn(
+                  "w-full rounded-xl pl-4 pr-11 py-3 outline-none transition-colors duration-200 text-sm font-mono border",
+                  isDark 
+                    ? "bg-zinc-950 border-zinc-900 text-white placeholder-zinc-800 focus:border-zinc-700" 
+                    : "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-400"
+                )}
+                placeholder="••••••••" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-750 dark:hover:text-zinc-300 transition-colors"
+                title={showPassword ? "Ocultar senha" : "Exibir senha"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {error && (
