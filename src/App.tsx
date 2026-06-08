@@ -940,7 +940,9 @@ const LogsTable = ({ logs, integrations, exportPDF, exportCSV, isDark }: { logs:
                 <tr key={log.id} className={cn("transition-colors", isDark ? "hover:bg-zinc-800/20" : "hover:bg-zinc-50")}>
                   <td className="px-6 py-4">
                     <p className={cn("text-xs font-semibold", isDark ? "text-white" : "text-zinc-900")}>{log.integration_name}</p>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-1">{new Date(log.timestamp).toLocaleTimeString()}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                      {new Date(log.timestamp).toLocaleDateString('pt-BR')} {new Date(log.timestamp).toLocaleTimeString('pt-BR')}
+                    </p>
                   </td>
                   <td className="px-6 py-4">
                     <p className={cn("text-xs font-mono", isDark ? "text-zinc-300" : "text-zinc-700")}>{log.ip}</p>
