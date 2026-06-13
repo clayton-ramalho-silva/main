@@ -24,6 +24,65 @@ function verifyPassword(password: string, storedHash: string): boolean {
   return hash === verifyHash;
 }
 
+// ENCRYPTION KEYS AND HELPERS FOR API KEYS (CRYPTOGRAPHY AT REST)
+const ENCRYPTION_KEY = crypto.createHash("sha256").update(process.env.ENCRYPTION_KEY || "nexuskey_secure_encryption_key_32b").digest();
+const IV_LENGTH = 16;
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+function decrypt(text: string): string {
+  try {
+    const textParts = text.split(":");
+    const iv = Buffer.from(textParts.shift()!, "hex");
+    const encryptedText = Buffer.from(textParts.join(":"), "hex");
+    const decipher = crypto.createDecipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (err) {
+    return text;
+  }
+}
+
+function isEncrypted(value: string): boolean {
+  if (!value || !value.includes(":")) return false;
+  const parts = value.split(":");
+  if (parts.length !== 2) return false;
+  return /^[0-9a-fA-F]+$/.test(parts[0]) && /^[0-9a-fA-F]+$/.test(parts[1]);
+}
+
+// TOKEN HELPERS DESCRIPTION (CRYPTOGRAPHICALLY SECURE SESSION TOKENS FOR RBAC)
+function generateToken(user: { id: number, username: string, role: string }): string {
+  const payload = JSON.stringify({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    timestamp: Date.now()
+  });
+  return encrypt(payload);
+}
+
+function verifyToken(token: string): { id: number, username: string, role: string } | null {
+  try {
+    const decrypted = decrypt(token);
+    const data = JSON.parse(decrypted);
+    // 24 hours expiry
+    const age = Date.now() - data.timestamp;
+    if (age > 24 * 60 * 60 * 1000) {
+      return null;
+    }
+    return { id: data.id, username: data.username, role: data.role };
+  } catch (e) {
+    return null;
+  }
+}
+
 // MySQL connection settings from environment or fallback
 const dbConfig = {
   host: process.env.DB_HOST || "193.203.175.153",
@@ -149,6 +208,22 @@ async function initDb() {
       `, [hashedAdminPassword]);
     }
 
+    // CHECK AND MIGRATE (REVOKE, REGENERATE, AND ENCRYPT) EXPOSED PLAIN-TEXT KEYS
+    const [existingKeys] = await pool.query("SELECT * FROM api_keys") as any[];
+    let migratedCount = 0;
+    for (const k of existingKeys) {
+      if (!isEncrypted(k.key_value)) {
+        // Automatically revoke any exposed, plain-text legacy keys and regenerate them as encrypted-at-rest
+        const newRawKey = "nexus_key_" + crypto.randomBytes(16).toString("hex");
+        const encKey = encrypt(newRawKey);
+        await pool.query("UPDATE api_keys SET key_value = ? WHERE id = ?", [encKey, k.id]);
+        migratedCount++;
+      }
+    }
+    if (migratedCount > 0) {
+      console.log(`[SECURITY PATCH] Successfully migrated to AES-256-CBC and revoked ${migratedCount} plain-text exposed keys.`);
+    }
+
     console.log("Database initialized successfully!");
   } catch (error) {
     console.error("Failed to initialize database tables:", error);
@@ -162,6 +237,28 @@ async function startServer() {
   const app = express();
   app.use(express.json());
   const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+
+  // --- Middleware for Route Protection ---
+  const authenticate = (req: any, res: any, next: any) => {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Acesso negado: Autenticação obrigatória." });
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: "Acesso negado: Sessão inválida ou expirada." });
+    }
+    req.user = decoded;
+    next();
+  };
+
+  const requireAdmin = (req: any, res: any, next: any) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Acesso negado: Requer privilégios de Administrador." });
+    }
+    next();
+  };
 
   // --- API Routes ---
 
@@ -177,7 +274,8 @@ async function startServer() {
       
       if (user && verifyPassword(password, user.password)) {
         const { password: _, ...userWithoutPassword } = user;
-        res.json(userWithoutPassword);
+        const token = generateToken(user);
+        res.json({ ...userWithoutPassword, token });
       } else {
         res.status(401).json({ error: "Credenciais inválidas" });
       }
@@ -186,8 +284,8 @@ async function startServer() {
     }
   });
 
-  // Users CRUD
-  app.get("/api/users", async (req, res) => {
+  // Users CRUD (Admin Only)
+  app.get("/api/users", authenticate, requireAdmin, async (req, res) => {
     try {
       const [users] = await pool.query("SELECT id, username, name, role, created_at FROM users");
       res.json(users);
@@ -196,7 +294,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/users", async (req, res) => {
+  app.post("/api/users", authenticate, requireAdmin, async (req, res) => {
     const { username, password, name, role } = req.body;
     try {
       const hashedPassword = hashPassword(password || 'orthanc123');
@@ -210,7 +308,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/users/:id", async (req, res) => {
+  app.put("/api/users/:id", authenticate, requireAdmin, async (req, res) => {
     const { username, password, name, role } = req.body;
     try {
       if (password) {
@@ -229,7 +327,7 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/users/:id", async (req, res) => {
+  app.delete("/api/users/:id", authenticate, requireAdmin, async (req, res) => {
     try {
       await pool.query("DELETE FROM users WHERE id = ?", [req.params.id]);
       res.json({ success: true });
@@ -239,7 +337,7 @@ async function startServer() {
   });
 
   // Country Blacklist CRUD
-  app.get("/api/blacklist", async (req, res) => {
+  app.get("/api/blacklist", authenticate, async (req, res) => {
     try {
       const [countries] = await pool.query("SELECT country_code, country_name, created_at FROM country_blacklist ORDER BY country_name ASC");
       res.json(countries);
@@ -248,7 +346,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/blacklist", async (req, res) => {
+  app.post("/api/blacklist", authenticate, requireAdmin, async (req, res) => {
     const { country_code, country_name } = req.body;
     if (!country_code || !country_name) {
       return res.status(400).json({ error: "Código e nome do país são obrigatórios." });
@@ -265,7 +363,7 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/blacklist/:country_code", async (req, res) => {
+  app.delete("/api/blacklist/:country_code", authenticate, requireAdmin, async (req, res) => {
     try {
       await pool.query("DELETE FROM country_blacklist WHERE country_code = ?", [req.params.country_code.toUpperCase()]);
       res.json({ success: true });
@@ -275,7 +373,7 @@ async function startServer() {
   });
 
   // Integrations CRUD
-  app.get("/api/integrations", async (req, res) => {
+  app.get("/api/integrations", authenticate, async (req, res) => {
     try {
       const [integrations] = await pool.query("SELECT * FROM integrations");
       res.json(integrations);
@@ -284,7 +382,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/integrations", async (req, res) => {
+  app.post("/api/integrations", authenticate, requireAdmin, async (req, res) => {
     const { name, origin, destination, port, protocol, access_type, tls_version, observations } = req.body;
     try {
       const [result] = await pool.query(`
@@ -297,7 +395,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/integrations/:id", async (req, res) => {
+  app.put("/api/integrations/:id", authenticate, requireAdmin, async (req, res) => {
     const { name, origin, destination, port, protocol, access_type, tls_version, observations } = req.body;
     try {
       await pool.query(`
@@ -311,7 +409,7 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/integrations/:id", async (req, res) => {
+  app.delete("/api/integrations/:id", authenticate, requireAdmin, async (req, res) => {
     try {
       await pool.query("DELETE FROM integrations WHERE id = ?", [req.params.id]);
       res.json({ success: true });
@@ -321,7 +419,7 @@ async function startServer() {
   });
 
   // Logs
-  app.get("/api/logs", async (req, res) => {
+  app.get("/api/logs", authenticate, async (req, res) => {
     try {
       const [logs] = await pool.query(`
         SELECT l.*, i.name as integration_name 
@@ -336,7 +434,7 @@ async function startServer() {
   });
 
   // Dashboard Stats
-  app.get("/api/stats", async (req, res) => {
+  app.get("/api/stats", authenticate, async (req, res) => {
     const integrationId = req.query.integrationId;
     const whereClause = integrationId ? "WHERE integration_id = ?" : "";
     const params = integrationId ? [integrationId] : [];
@@ -379,7 +477,7 @@ async function startServer() {
   });
 
   // --- API Key Management ---
-  app.get("/api/api-keys", async (req, res) => {
+  app.get("/api/api-keys", authenticate, async (req, res) => {
     try {
       const [keys] = await pool.query(`
         SELECT k.*, i.name as integration_name 
@@ -387,30 +485,57 @@ async function startServer() {
         LEFT JOIN integrations i ON k.integration_id = i.id
         ORDER BY k.created_at DESC
       `);
-      res.json(keys);
+      
+      const maskedKeys = (keys as any[]).map(k => {
+        let rawKey = "";
+        if (isEncrypted(k.key_value)) {
+          rawKey = decrypt(k.key_value);
+        } else {
+          rawKey = k.key_value;
+        }
+        
+        const prefix = "nexus_key_";
+        let masked = "";
+        if (rawKey.startsWith(prefix)) {
+          const content = rawKey.substring(prefix.length);
+          masked = prefix + content.substring(0, 4) + "•".repeat(Math.max(4, content.length - 4));
+        } else {
+          masked = rawKey.substring(0, 4) + "•".repeat(Math.max(4, rawKey.length - 4));
+        }
+        
+        return {
+          ...k,
+          key_value: masked
+        };
+      });
+      
+      res.json(maskedKeys);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  app.post("/api/api-keys", async (req, res) => {
+  app.post("/api/api-keys", authenticate, requireAdmin, async (req, res) => {
     const { name, integration_id } = req.body;
     if (!name || !integration_id) {
       return res.status(400).json({ error: "Nome e integração ID são obrigatórios." });
     }
     try {
       const keyValue = "nexus_key_" + crypto.randomBytes(16).toString("hex");
+      const encryptedKeyValue = encrypt(keyValue);
       const [result] = await pool.query(`
         INSERT INTO api_keys (key_value, name, integration_id)
         VALUES (?, ?, ?)
-      `, [keyValue, name, integration_id]);
+      `, [encryptedKeyValue, name, integration_id]);
+      
+      // Return cleartext only ONCE in key-creation response so user can copy it!
       res.json({ id: (result as any).insertId, key_value: keyValue, name, integration_id });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  app.delete("/api/api-keys/:id", async (req, res) => {
+  app.delete("/api/api-keys/:id", authenticate, requireAdmin, async (req, res) => {
     try {
       await pool.query("DELETE FROM api_keys WHERE id = ?", [req.params.id]);
       res.json({ success: true });
@@ -446,8 +571,22 @@ async function startServer() {
     }
 
     try {
-      const [keyRows] = await pool.query("SELECT * FROM api_keys WHERE key_value = ?", [apiKey]) as any[];
-      const keyRecord = keyRows[0];
+      // Load and verify keys in memory (decrypt)
+      const [keyRows] = await pool.query("SELECT * FROM api_keys") as any[];
+      let keyRecord = null;
+      for (const k of keyRows) {
+        let decVal = "";
+        if (isEncrypted(k.key_value)) {
+          decVal = decrypt(k.key_value);
+        } else {
+          decVal = k.key_value;
+        }
+        if (decVal === apiKey) {
+          keyRecord = k;
+          break;
+        }
+      }
+
       if (!keyRecord) {
         return res.status(401).json({ error: "Não autorizado: API Key inválida ou inexistente." });
       }

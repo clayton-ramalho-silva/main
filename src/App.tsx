@@ -118,6 +118,7 @@ interface User {
   name: string;
   role: 'admin' | 'client';
   created_at?: string;
+  token?: string;
 }
 
 // --- Components ---
@@ -1674,8 +1675,12 @@ const UserManagement = ({ isDark }: { isDark: boolean }) => {
   });
 
   const fetchUsers = async () => {
-    const res = await axios.get('/api/users');
-    setUsers(res.data);
+    try {
+      const res = await axios.get('/api/users');
+      setUsers(res.data);
+    } catch (e) {
+      console.error("Erro ao carregar usuários:", e);
+    }
   };
 
   useEffect(() => {
@@ -2023,7 +2028,22 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
 export default function App() {
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('orthanc_user');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.token) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${parsed.token}`;
+          return parsed;
+        } else {
+          localStorage.removeItem('orthanc_user');
+          return null;
+        }
+      } catch (e) {
+        localStorage.removeItem('orthanc_user');
+        return null;
+      }
+    }
+    return null;
   });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDark, setIsDark] = useState(false);
@@ -2032,11 +2052,15 @@ export default function App() {
   const handleLogin = (userData: User) => {
     setUser(userData);
     localStorage.setItem('orthanc_user', JSON.stringify(userData));
+    if (userData && userData.token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+    }
   };
 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('orthanc_user');
+    delete axios.defaults.headers.common['Authorization'];
   };
 
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -2044,7 +2068,24 @@ export default function App() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [dashboardFilter, setDashboardFilter] = useState<number | 'all'>('all');
 
+  // Set up response interceptor to handle unauthorized access (401 invalid/expired session tokens)
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response && error.response.status === 401) {
+          handleLogout();
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
   const fetchData = async () => {
+    if (!user) return;
     try {
       const [intRes, logRes] = await Promise.all([
         axios.get('/api/integrations'),
@@ -2062,10 +2103,11 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!user) return;
     fetchData();
     const interval = setInterval(fetchData, 10000); // Polling logs
     return () => clearInterval(interval);
-  }, [dashboardFilter]);
+  }, [dashboardFilter, user]);
 
   const exportPDF = (dataToExport: Log[], integrationName?: string) => {
     const doc = new jsPDF() as any;
