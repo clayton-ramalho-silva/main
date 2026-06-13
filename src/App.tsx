@@ -1304,7 +1304,7 @@ fetch("${baseUrl}/api/logs/register", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "X-API-Key": "${keys[0]?.key_value || 'orthanc_key_sua_chave_aqui'}"
+    "X-API-Key": "SUA_API_KEY_AQUI"
   },
   body: JSON.stringify({
     ip: "186.230.12.98",
@@ -1323,7 +1323,7 @@ fetch("${baseUrl}/api/logs/register", {
   const codePhp = `<?php
 // Exemplo de integração em PHP (cURL)
 $api_url = "${baseUrl}/api/logs/register";
-$api_key = "${keys[0]?.key_value || 'orthanc_key_sua_chave_aqui'}";
+$api_key = "SUA_API_KEY_AQUI";
 
 $payload = [
     "ip" => "186.230.12.98",
@@ -1433,21 +1433,11 @@ curl_close($ch);
 
                     <div className="flex items-center gap-2">
                       <code className={cn(
-                        "text-xs font-mono px-2.5 py-1 rounded select-all transition-colors",
-                        isDark ? "bg-zinc-950 text-zinc-400" : "bg-zinc-100 text-zinc-700"
+                        "text-xs font-mono px-2.5 py-1 rounded select-none transition-colors",
+                        isDark ? "bg-zinc-950 text-zinc-500" : "bg-zinc-100 text-zinc-400"
                       )}>
-                        {k.key_value.substring(0, 14)}••••••••••••••••
+                        ••••••••••••••••••••••••••••••••
                       </code>
-                      <button 
-                        onClick={() => handleCopy(k.key_value, k.id)}
-                        className={cn(
-                          "p-1.5 rounded transition-colors",
-                          isDark ? "hover:bg-zinc-800 text-zinc-500 hover:text-white" : "hover:bg-zinc-100 text-zinc-500 hover:text-black"
-                        )}
-                        title="Copiar API Key"
-                      >
-                        {copiedId === k.id ? <Check className="w-4.5 h-4.5 text-emerald-500" /> : <Copy className="w-4.5 h-4.5" />}
-                      </button>
                     </div>
 
                     <p className={cn("text-[10px]", isDark ? "text-zinc-500" : "text-zinc-400")}>
