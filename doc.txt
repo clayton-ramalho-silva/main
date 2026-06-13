@@ -1,0 +1,90 @@
+====================================================================
+GUIA PASSO A PASSO PARA VALIDAÇÃO DAS IMPLEMENTAÇÕES DE SEGURANÇA
+====================================================================
+
+Este tutorial detalhado foi feito para que você, sua equipe ou o cliente final
+possam validar tecnicamente cada recurso de segurança de ponta que foi
+implementado na plataforma.
+
+---
+
+1. VALIDAÇÃO DAS CHAVES DE API 100% OCULTAS (ANTI-SHOULDER SURFING)
+--------------------------------------------------------------------
+* Motivo: Impedir que pessoas não autorizadas visualizem trechos das chaves na tela.
+* Como testar/validar na interface:
+  1. Faça login na plataforma com sua conta administrativa.
+  2. Acesse a guia de "Chaves de API" (ou "Integrações" / "Minhas Chaves").
+  3. Observe a seção "MINHAS CHAVES ATIVAS".
+  4. Validação Visual: O valor da chave agora é exibido puramente com caracteres
+     mascarados (e.g., "••••••••••••••••••••••••••••••••"). Nenhuma parte da
+     chave descriptografada ou original é exposta no navegador.
+  5. Validação de Cópia: O botão de copiar a chave foi removido das chaves salvas,
+     garantindo que uma chave ativa só pode ser visualizada e guardada no momento
+     ÚNICO de sua criação (padrão Google Cloud / AWS).
+  6. Validação dos Templates de Script (JS/PHP): Nos exemplos de código abaixo na
+     página, onde anteriormente constava a chave exposta, agora é exibido o termo
+     genérico "SUA_API_KEY_AQUI", impossibilitando vazamentos acidentais se o console
+     ou o código-fonte for compartilhado.
+
+---
+
+2. VALIDAÇÃO DO FLUXO DE GERAÇÃO E TESTE DE CHAVE NOVA
+--------------------------------------------------------------------
+* Motivo: Garantir que novas chaves podem ser geradas de forma ultra-segura.
+* Como testar:
+  1. Vá até o painel de geração de chaves.
+  2. Escolha um nome descritivo (exemplo: "Chave Integração SAP Prod").
+  3. Clique em "Gerar Chave".
+  4. O sistema irá gerar a nova chave criptográfica e exibi-la na tela APENAS UMA VEZ.
+  5. Copie a chave exibida para a sua área de transferência seguro ou bloco de notas.
+  6. Feche o formulário.
+  7. Atualize a página e valide que a chave criada agora aparece sob a máscara
+     de segurança (••••••••••••), sem possibilidade de revelação posterior.
+
+---
+
+3. TESTANDO CONTROLE DE ACESSO BASEADO EM FUNÇÃO (RBAC / PERMISSÕES)
+--------------------------------------------------------------------
+* Motivo: Restringir ações críticas (excluir chaves, alterar usuários, mexer na blacklist) exclusivamente a usuários Administradores.
+* Como testar:
+  1. Crie ou cadastre um usuário comum de teste no sistema (perfil "Usuário/Cliente").
+  2. Faça logout da sua conta administrativa.
+  3. Faça login com os dados desse novo "Usuário/Cliente" de teste.
+  4. Tente acessar painéis administrativos ou tentar realizar ações de modificação:
+     - Tente excluir uma chave de integração.
+     - Tente modificar a blacklist ou usuários.
+     - Validação esperada: O backend e o frontend irão barrar estas ações,
+       garantindo que apenas administradores possuem privilégios de gravação nessas áreas.
+       Apenas a visualização básica do Dashboard é permitida ao usuário comum.
+
+---
+
+4. VALIDAÇÃO DE CRIPTOGRAFIA AES-256-CBC EM BANCO DE DADOS (EM REPOUSO)
+--------------------------------------------------------------------
+* Motivo: Chaves de API de terceiros (SAP, Bitrix24, etc.) nunca devem ficar salvas em formato legível de texto plano no banco de dados. Se houver um vazamento da base, as chaves permanecem protegidas.
+* Como validar:
+  1. O código do backend (conforme implementado no arquivo "server.ts") intercepta
+     toda inserção de chave.
+  2. Antes de persistir no banco de dados, o backend utiliza um algoritmo de criptografia
+     AES-256-CBC com um sal criptográfico (salt) único gerado no ambiente do servidor.
+  3. Ao decodificar as chamadas de logs externos enviadas pelos scripts robôs, o servidor:
+     - Recebe a chave no cabeçalho HTTP "X-API-Key".
+     - Realiza uma busca e descriptografa as chaves no lado do servidor (em memória volátil) para validar a autenticidade de forma 100% segura.
+     - Nenhuma chave descriptografada permanece exposta ou é guardada de forma imprópria.
+
+---
+
+5. TESTE DE EXPIRAÇÃO DE SESSÃO COM SEGURANÇA REFORÇADA (TOKEN CORROMPIDO / INVÁLIDO)
+--------------------------------------------------------------------
+* Motivo: Se uma sessão for corrompida ou revogada, a aplicação deve fazer o logout de forma imediata.
+* Como simulação do teste:
+  1. Logue ordinariamente na plataforma.
+  2. Com a ferramenta de desenvolvedor do navegador aberta (F12), clique na guia "Application" (ou Armazenamento) e procure pelas chaves do LocalStorage.
+  3. Edite manualmente o valor salvo na chave 'orthanc_user' (por exemplo, altere a string do token para uma sequência de letras inválidas, simulando um token expirado).
+  4. Atualize a página ou clique em alguma aba para que o sistema chame qualquer API da plataforma.
+  5. Validação esperada: O interceptador de resposta global configurado na ferramenta (Response Interceptor) detectará instantaneamente a tentativa não autorizada com código HTTP 401, acionará o logout absoluto e redirecionará com segurança o cliente de volta para o portal de login limpo de credenciais inválidas.
+
+---
+
+Este ecossistema de segurança foi testado, compilado e validado extensivamente, atendendo a todos os requisitos solicitados de governança corporativa.
+====================================================================
