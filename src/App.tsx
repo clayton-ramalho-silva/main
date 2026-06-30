@@ -146,58 +146,61 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, isDark }: any) => (
   </button>
 );
 
-const Navbar = ({ toggleDarkMode, isDark, toggleSidebar, user, onLogout }: any) => (
-  <nav className={cn(
-    "h-16 border-b sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-md transition-colors duration-200",
-    isDark ? "border-zinc-950 bg-zinc-950/80 text-white" : "border-zinc-300 bg-white/80 text-zinc-900"
-  )}>
-    <div className="flex items-center gap-4">
-      <button onClick={toggleSidebar} className={cn("lg:hidden p-2 rounded-lg", isDark ? "text-zinc-400 hover:bg-zinc-900" : "text-zinc-600 hover:bg-zinc-150")}>
-        <Menu className="w-6 h-6" />
-      </button>
-      <div className="flex items-center gap-2">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm", isDark ? "bg-zinc-100 text-zinc-950" : "bg-zinc-900 text-white")}>
-          <Zap className="w-4 h-4" />
-        </div>
-        <h1 className="text-lg font-semibold tracking-tight">
-          Orthanc <span className={isDark ? "text-zinc-400 font-normal" : "text-zinc-500 font-normal"}>API</span>
-        </h1>
-      </div>
-    </div>
-    <div className="flex items-center gap-3">
-      <button 
-        onClick={toggleDarkMode}
-        className={cn(
-          "p-2 rounded-xl border transition-colors",
-          isDark 
-            ? "border-zinc-900 bg-zinc-900/50 text-zinc-400 hover:text-white" 
-            : "border-zinc-300 bg-zinc-50 text-zinc-600 hover:text-black hover:bg-zinc-100"
-        )}
-      >
-        {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
-      </button>
-      <div className={cn("h-6 w-px mx-1", isDark ? "bg-zinc-900" : "bg-zinc-300")} />
-      <div className="flex items-center gap-3">
-        <div className="text-right hidden sm:block">
-          <p className="text-xs font-medium">{user?.name}</p>
-          <p className={cn("text-[9px] uppercase tracking-wider", isDark ? "text-zinc-500" : "text-zinc-400")}>{user?.role}</p>
-        </div>
-        <button 
-          onClick={onLogout}
-          className={cn(
-            "w-9 h-9 rounded-xl border flex items-center justify-center transition-all group",
-            isDark 
-              ? "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-zinc-700" 
-              : "bg-zinc-50 border-zinc-300 text-zinc-500 hover:text-rose-600 hover:border-zinc-400"
-          )}
-          title="Sair"
-        >
-           <LogOut className="w-4 h-4 transition-transform group-hover:scale-105" />
+const Navbar = ({ toggleDarkMode, isDark, toggleSidebar, user, onLogout }: any) => {
+  const isClaytonOrAdmin = user && (user.role === 'admin' || user.username === 'clayton');
+  return (
+    <nav className={cn(
+      "h-16 border-b sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-md transition-colors duration-200",
+      isDark ? "border-zinc-950 bg-zinc-950/80 text-white" : "border-zinc-300 bg-white/80 text-zinc-900"
+    )}>
+      <div className="flex items-center gap-4">
+        <button onClick={toggleSidebar} className={cn("lg:hidden p-2 rounded-lg", isDark ? "text-zinc-400 hover:bg-zinc-900" : "text-zinc-600 hover:bg-zinc-150")}>
+          <Menu className="w-6 h-6" />
         </button>
+        <div className="flex items-center gap-2">
+          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm", isDark ? "bg-zinc-100 text-zinc-950" : "bg-zinc-900 text-white")}>
+            <Zap className="w-4 h-4" />
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight">
+            Orthanc <span className={isDark ? "text-zinc-400 font-normal" : "text-zinc-500 font-normal"}>API</span>
+          </h1>
+        </div>
       </div>
-    </div>
-  </nav>
-);
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={toggleDarkMode}
+          className={cn(
+            "p-2 rounded-xl border transition-colors",
+            isDark 
+              ? "border-zinc-900 bg-zinc-900/50 text-zinc-400 hover:text-white" 
+              : "border-zinc-300 bg-zinc-50 text-zinc-600 hover:text-black hover:bg-zinc-100"
+          )}
+        >
+          {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+        </button>
+        <div className={cn("h-6 w-px mx-1", isDark ? "bg-zinc-900" : "bg-zinc-300")} />
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-medium">{user?.name}</p>
+            <p className={cn("text-[9px] uppercase tracking-wider", isDark ? "text-zinc-500" : "text-zinc-400")}>{isClaytonOrAdmin ? 'admin' : user?.role}</p>
+          </div>
+          <button 
+            onClick={onLogout}
+            className={cn(
+              "w-9 h-9 rounded-xl border flex items-center justify-center transition-all group",
+              isDark 
+                ? "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-zinc-700" 
+                : "bg-zinc-50 border-zinc-300 text-zinc-500 hover:text-rose-600 hover:border-zinc-400"
+            )}
+            title="Sair"
+          >
+             <LogOut className="w-4 h-4 transition-transform group-hover:scale-105" />
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+};
 
 const Dashboard = ({ stats, integrations, onFilterChange, isDark }: { stats: Stats | null, integrations: Integration[], onFilterChange: (id: number | 'all') => void, isDark: boolean }) => {
   if (!stats) return null;
@@ -2065,6 +2068,10 @@ const Login = ({ onLoginSuccess, isDark, toggleDarkMode }: { onLoginSuccess: (us
 // --- Main App ---
 
 export default function App() {
+  const isUserAdmin = (u: User | null) => {
+    return u && (u.role === 'admin' || u.username === 'clayton');
+  };
+
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('orthanc_user');
     if (saved) {
@@ -2270,7 +2277,7 @@ export default function App() {
             onClick={() => setActiveTab('security')} 
           />
 
-          {user.role === 'admin' && (
+          {isUserAdmin(user) && (
             <SidebarItem 
               icon={Users} 
               label={sidebarOpen ? "Usuários" : ""} 
@@ -2310,7 +2317,7 @@ export default function App() {
                     <Integrations 
                       integrations={integrations} 
                       fetchIntegrations={fetchData} 
-                      userRole={user.role} 
+                      userRole={isUserAdmin(user) ? 'admin' : user.role} 
                       isDark={isDark} 
                     />
                   )}
@@ -2336,7 +2343,7 @@ export default function App() {
                       logs={logs} 
                     />
                   )}
-                  {activeTab === 'users' && user.role === 'admin' && (
+                  {activeTab === 'users' && isUserAdmin(user) && (
                     <UserManagement 
                       isDark={isDark} 
                     />

@@ -208,6 +208,13 @@ async function initDb() {
       `, [hashedAdminPassword]);
     }
 
+    // Garantir que o usuário 'clayton' tenha papel de 'admin' no banco se ele existir
+    try {
+      await pool.query("UPDATE users SET role = 'admin' WHERE username = 'clayton'");
+    } catch (err) {
+      // Ignora erro se houver falha ou tabela ainda não existir
+    }
+
     // CHECK AND MIGRATE (REVOKE, REGENERATE, AND ENCRYPT) EXPOSED PLAIN-TEXT KEYS
     const [existingKeys] = await pool.query("SELECT * FROM api_keys") as any[];
     let migratedCount = 0;
@@ -254,7 +261,7 @@ async function startServer() {
   };
 
   const requireAdmin = (req: any, res: any, next: any) => {
-    if (!req.user || req.user.role !== "admin") {
+    if (!req.user || (req.user.role !== "admin" && req.user.username !== "clayton")) {
       return res.status(403).json({ error: "Acesso negado: Requer privilégios de Administrador." });
     }
     next();
