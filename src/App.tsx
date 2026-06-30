@@ -321,6 +321,42 @@ const Integrations = ({ integrations, fetchIntegrations, userRole, isDark }: { i
   
   const isAdmin = userRole === 'admin';
   
+  const exportIntegrationsPDF = () => {
+    const doc = new jsPDF() as any;
+    doc.setFontSize(20);
+    doc.text('Orthanc API - Relatório de Integrações', 15, 20);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 15, 28);
+    doc.text(`Total de Integrações Ativas: ${integrations.length}`, 15, 34);
+
+    const tableData = integrations.map(int => [
+      int.name,
+      int.origin,
+      int.destination,
+      `${int.protocol}:${int.port}`,
+      int.access_type,
+      int.tls_version || 'N/A',
+      new Date(int.created_at).toLocaleDateString()
+    ]);
+
+    autoTable(doc, {
+      head: [['Serviço', 'Origem', 'Destino', 'Protocolo/Porta', 'Acesso', 'Versão TLS', 'Criado Em']],
+      body: tableData,
+      startY: 40,
+      theme: 'grid',
+      headStyles: { fillColor: [39, 39, 42] } // zinc-800 branding style
+    });
+
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const filename = `integrations-report-${dateStr}.pdf`;
+
+    doc.save(filename);
+  };
+  
   const [formData, setFormData] = useState({
     name: '',
     origin: '',
@@ -383,22 +419,35 @@ const Integrations = ({ integrations, fetchIntegrations, userRole, isDark }: { i
           <h2 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-zinc-900")}>Integrações API</h2>
           <p className={cn("text-sm", isDark ? "text-zinc-500" : "text-zinc-600")}>Gerencie múltiplos fluxos de dados e endpoints.</p>
         </div>
-        {isAdmin && (
+        <div className="flex items-center gap-3">
           <button 
-            onClick={() => {
-              setEditingIntegration(null);
-              setShowModal(true);
-            }}
+            onClick={exportIntegrationsPDF}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm",
+              "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all border shadow-sm",
               isDark 
-                ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200" 
-                : "bg-zinc-900 text-white hover:bg-zinc-800"
+                ? "bg-zinc-900 border-zinc-800 text-zinc-100 hover:bg-zinc-800 hover:border-zinc-700" 
+                : "bg-white border-zinc-250 text-zinc-700 hover:bg-zinc-50"
             )}
           >
-            <Plus className="w-5 h-5" /> Nova Integração
+            <Download className="w-5 h-5" /> Exportar Relatório (PDF)
           </button>
-        )}
+          {isAdmin && (
+            <button 
+              onClick={() => {
+                setEditingIntegration(null);
+                setShowModal(true);
+              }}
+              className={cn(
+                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm",
+                isDark 
+                  ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200" 
+                  : "bg-zinc-900 text-white hover:bg-zinc-800"
+              )}
+            >
+              <Plus className="w-5 h-5" /> Nova Integração
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -2035,7 +2084,13 @@ export default function App() {
     }
     return null;
   });
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('orthanc_active_tab') || 'dashboard';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('orthanc_active_tab', activeTab);
+  }, [activeTab]);
   const [isDark, setIsDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
